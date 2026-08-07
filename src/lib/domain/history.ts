@@ -82,7 +82,7 @@ export async function listTradeHistory(
     WITH base AS (
       SELECT
         t.owner_id,
-        t.brokerage_code,
+        b.code AS brokerage_code,
         t.executed_at,
         t.quantity::numeric AS quantity,
         t.unit_price::numeric AS unit_price,
@@ -91,7 +91,8 @@ export async function listTradeHistory(
         s.stock_name,
         t.realized_profit AS profit
       FROM trades t
-      JOIN securities s ON s.item_code = t.security_code
+      JOIN securities s ON s.id = t.security_id
+      LEFT JOIN brokerages b ON b.id = t.brokerage_id
       WHERE t.side = ${side}
     )
     SELECT
@@ -132,7 +133,7 @@ export async function listTradeHistory(
 
   const rowsResult: unknown = await database`
     WITH base AS (
-      SELECT t.id, t.owner_id, o.name AS owner_name, t.brokerage_code,
+      SELECT t.id, t.owner_id, o.name AS owner_name, b.code AS brokerage_code,
         b.name AS brokerage_name, t.executed_at,
         t.quantity::numeric AS quantity, t.unit_price::numeric AS unit_price,
         t.quantity::numeric * t.unit_price::numeric AS amount,
@@ -140,8 +141,8 @@ export async function listTradeHistory(
         t.realized_profit AS profit
       FROM trades t
       JOIN owners o ON o.id = t.owner_id
-      JOIN securities s ON s.item_code = t.security_code
-      LEFT JOIN brokerages b ON b.code = t.brokerage_code
+      JOIN securities s ON s.id = t.security_id
+      LEFT JOIN brokerages b ON b.id = t.brokerage_id
       WHERE t.side = ${side}
     )
     SELECT id::text AS id, executed_at AS "executedAt",

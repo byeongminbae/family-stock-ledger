@@ -44,7 +44,7 @@ function tradeCommon(itemCode: string, ownerId: 1 | 2 | 3, stockName: string) {
 }
 
 async function clearTestTrades() {
-  await database`DELETE FROM trades WHERE security_code IN ${database(testCodes)}`;
+  await database`DELETE FROM trades WHERE security_id IN (SELECT id FROM securities WHERE item_code IN ${database(testCodes)})`;
   await database`DELETE FROM securities WHERE item_code IN ${database(testCodes)}`;
 }
 

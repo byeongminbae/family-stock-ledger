@@ -28,7 +28,7 @@ function tradeCommon(itemCode: string, stockName: string) {
 }
 
 async function clearTestTrades(): Promise<void> {
-  await database`DELETE FROM trades WHERE security_code IN ${database(testCodes)}`;
+  await database`DELETE FROM trades WHERE security_id IN (SELECT id FROM securities WHERE item_code IN ${database(testCodes)})`;
   await database`DELETE FROM securities WHERE item_code IN ${database(testCodes)}`;
 }
 
@@ -134,8 +134,8 @@ describe("brokerage integration", () => {
       VALUES ('BRK003', '레거시 거래', 'KRX', false)
     `;
     await database`
-      INSERT INTO trades (owner_id, security_code, side, executed_at, quantity, unit_price)
-      VALUES (1, 'BRK003', 'BUY', ${day(1)}, 1, 100)
+      INSERT INTO trades (owner_id, security_id, side, executed_at, quantity, unit_price)
+      VALUES (1, (SELECT id FROM securities WHERE item_code = 'BRK003'), 'BUY', ${day(1)}, 1, 100)
     `;
 
     const history = await listTradeHistory("BUY", { q: "레거시 거래" }, database);

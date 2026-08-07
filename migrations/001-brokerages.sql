@@ -1,7 +1,8 @@
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS brokerages (
-    code CHAR(3) PRIMARY KEY,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    code CHAR(3) NOT NULL UNIQUE,
     name TEXT NOT NULL UNIQUE,
     CONSTRAINT brokerages_code_format CHECK (code ~ '^[0-9]{3}$')
 );
@@ -47,10 +48,10 @@ VALUES
 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
 
 ALTER TABLE trades
-    ADD COLUMN IF NOT EXISTS brokerage_code CHAR(3)
-    REFERENCES brokerages(code) ON UPDATE RESTRICT ON DELETE RESTRICT;
+    ADD COLUMN IF NOT EXISTS brokerage_id BIGINT
+    REFERENCES brokerages(id) ON UPDATE RESTRICT ON DELETE RESTRICT;
 
-CREATE INDEX IF NOT EXISTS trades_brokerage_code_index
-    ON trades (brokerage_code);
+CREATE INDEX IF NOT EXISTS trades_brokerage_id_index
+    ON trades (brokerage_id);
 
 COMMIT;

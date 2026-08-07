@@ -192,7 +192,7 @@ export async function getBaseDashboardPositions(
         FILTER (WHERE t.side = 'BUY')::text AS "totalBuyAmount"
     FROM trades t
     JOIN owners o ON o.id = t.owner_id
-    JOIN securities s ON s.item_code = t.security_code
+    JOIN securities s ON s.id = t.security_id
     GROUP BY o.id, o.name, s.item_code, s.stock_name
     HAVING
       SUM(CASE WHEN t.side = 'BUY' THEN t.quantity ELSE -t.quantity END) > 0

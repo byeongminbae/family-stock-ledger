@@ -87,9 +87,10 @@ export async function replayLedger(
           0
         )
       )::text AS "remainingCost"
-    FROM trades
-    WHERE owner_id = ${key.ownerId} AND security_code = ${key.itemCode}
-      AND executed_at < ${updateFrom}
+    FROM trades t
+    JOIN securities s ON s.id = t.security_id
+    WHERE t.owner_id = ${key.ownerId} AND s.item_code = ${key.itemCode}
+      AND t.executed_at < ${updateFrom}
   `;
   const [seed] = replaySeedSchema.parse(seedResult);
   if (seed === undefined) {
@@ -97,12 +98,13 @@ export async function replayLedger(
   }
 
   const suffixResult: unknown = await transaction`
-    SELECT id::text AS id, side, executed_at AS "executedAt",
+    SELECT t.id::text AS id, side, t.executed_at AS "executedAt",
       quantity::text AS quantity, unit_price::text AS "unitPrice"
-    FROM trades
-    WHERE owner_id = ${key.ownerId} AND security_code = ${key.itemCode}
-      AND executed_at >= ${updateFrom}
-    ORDER BY executed_at ASC, id ASC
+    FROM trades t
+    JOIN securities s ON s.id = t.security_id
+    WHERE t.owner_id = ${key.ownerId} AND s.item_code = ${key.itemCode}
+      AND t.executed_at >= ${updateFrom}
+    ORDER BY t.executed_at ASC, t.id ASC
   `;
   const trades = z.array(ledgerTradeSchema).parse(suffixResult);
   const replay = calculateReplay(trades, seed);

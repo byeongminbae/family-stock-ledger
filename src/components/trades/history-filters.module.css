@@ -1,0 +1,119 @@
+.filters {
+  padding: var(--space-4);
+}
+
+.filters > summary {
+  min-height: 44px;
+  cursor: pointer;
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  line-height: 44px;
+}
+
+.count {
+  margin-inline-start: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+}
+
+.range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.range legend {
+  grid-column: 1 / -1;
+  margin-block-end: var(--space-1);
+  font-size: var(--font-size-meta);
+  font-weight: 700;
+}
+
+.rangeField {
+  display: grid;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.rangeField input {
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.error {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  background: var(--color-negative-soft);
+  color: var(--color-negative);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  padding: 0;
+  border: 0;
+}
+
+.chip {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.chip:hover {
+  border-color: var(--color-brand);
+}
+
+@media (max-width: 1119px) {
+  .form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .filters {
+    padding: var(--space-3);
+  }
+
+  .form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .actions button {
+    min-width: 0;
+  }
+}

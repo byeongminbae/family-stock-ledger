@@ -1,0 +1,162 @@
+import ky from "ky";
+import { z } from "zod";
+
+const NAVER_API_BASE_URL = "https://m.stock.naver.com/front-api";
+const PRICE_BATCH_SIZE = 50;
+
+const itemCodeSchema = z.string().regex(/^[0-9A-Z]{6}$/);
+const searchResponseSchema = z.object({
+  isSuccess: z.literal(true),
+  result: z.object({
+    items: z.array(
+      z.object({
+        category: z.string(),
+        code: z.string(),
+        isEtf: z.boolean().nullable(),
+        name: z.string().min(1),
+        nationCode: z.string().nullable(),
+        typeCode: z.string(),
+        typeName: z.string().min(1),
+        url: z.string(),
+      }),
+    ),
+  }),
+});
+const marketPriceResponseSchema = z.object({
+  isSuccess: z.literal(true),
+  result: z.object({
+    datas: z.array(
+      z.object({
+        closePriceRaw: z.string().regex(/^\d+$/),
+        itemCode: itemCodeSchema,
+        localTradedAt: z.string().min(1),
+        marketStatus: z.string().min(1),
+        stockName: z.string().min(1),
+      }),
+    ),
+  }),
+});
+
+const createNaverClient = () =>
+  ky.create({
+    fetch: globalThis.fetch,
+    prefix: `${NAVER_API_BASE_URL}/`,
+    retry: {
+      backoffLimit: 250,
+      limit: 1,
+      methods: ["get"],
+      statusCodes: [408, 429, 500, 502, 503, 504],
+    },
+    timeout: 4_000,
+  });
+
+export type NaverStock = Readonly<{
+  code: string;
+  isEtf: boolean;
+  market: string;
+  name: string;
+}>;
+
+export type NaverMarketPrice = Readonly<{
+  itemCode: string;
+  localTradedAt: string;
+  marketStatus: string;
+  price: string;
+  stockName: string;
+}>;
+
+export class NaverProviderError extends Error {
+  constructor(cause?: unknown) {
+    super("네이버 증권 정보를 불러오지 못했습니다.", { cause });
+    this.name = "NaverProviderError";
+  }
+}
+
+export async function searchNaverStocks(query: string): Promise<readonly NaverStock[]> {
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length === 0 || normalizedQuery.length > 80) {
+    throw new NaverProviderError();
+  }
+
+  try {
+    const response = await createNaverClient()
+      .get("search", {
+        cache: "no-store",
+        searchParams: {
+          page: "1",
+          q: normalizedQuery,
+          size: "20",
+          target: "stock,index,marketindicator,coin,ipo,fund",
+        },
+      })
+      .json<unknown>();
+    const parsed = searchResponseSchema.parse(response);
+
+    return parsed.result.items.flatMap((item) => {
+      if (
+        item.category !== "stock" ||
+        item.nationCode !== "KOR" ||
+        item.isEtf === null ||
+        !item.url.startsWith("/domestic/stock/") ||
+        !itemCodeSchema.safeParse(item.code).success
+      ) {
+        return [];
+      }
+
+      return [
+        {
+          code: item.code,
+          isEtf: item.isEtf,
+          market: item.typeName,
+          name: item.name,
+        },
+      ];
+    });
+  } catch (error) {
+    throw new NaverProviderError(error);
+  }
+}
+
+export async function getNaverMarketPrices(
+  itemCodes: readonly string[],
+): Promise<Readonly<Record<string, NaverMarketPrice | null>>> {
+  const codes = [...new Set(z.array(itemCodeSchema).max(500).parse(itemCodes))];
+  const result: Record<string, NaverMarketPrice | null> = {};
+  for (const code of codes) result[code] = null;
+
+  const batches = Array.from({ length: Math.ceil(codes.length / PRICE_BATCH_SIZE) }, (_, index) =>
+    codes.slice(index * PRICE_BATCH_SIZE, (index + 1) * PRICE_BATCH_SIZE),
+  );
+  const responses = await Promise.allSettled(batches.map(fetchPriceBatch));
+
+  for (const response of responses) {
+    if (response.status !== "fulfilled") continue;
+    for (const price of response.value) {
+      if (Object.hasOwn(result, price.itemCode)) result[price.itemCode] = price;
+    }
+  }
+
+  return result;
+}
+
+async function fetchPriceBatch(itemCodes: readonly string[]): Promise<readonly NaverMarketPrice[]> {
+  const response = await createNaverClient()
+    .get("realTime/marketPrice", {
+      cache: "no-store",
+      searchParams: {
+        endType: "stock",
+        itemCodes: itemCodes.join(","),
+        stockType: "domestic",
+      },
+    })
+    .json<unknown>();
+  const parsed = marketPriceResponseSchema.parse(response);
+
+  return parsed.result.datas.map((item) => ({
+    itemCode: item.itemCode,
+    localTradedAt: item.localTradedAt,
+    marketStatus: item.marketStatus,
+    price: item.closePriceRaw,
+    stockName: item.stockName,
+  }));
+}

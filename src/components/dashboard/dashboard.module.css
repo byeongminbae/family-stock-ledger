@@ -1,0 +1,465 @@
+.pageHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.summary {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.summaryHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.summaryHeading h2,
+.summaryHeading p,
+.ownerHeader h2,
+.ownerHeader p,
+.cardHeader h3,
+.cardHeader p,
+.firstTrade h2,
+.firstTrade p {
+  margin: 0;
+}
+
+.summaryHeading h2 {
+  font-size: var(--font-size-base);
+  line-height: 1.5;
+}
+
+.summaryHeading p,
+.ownerHeader > div:first-child > p:last-child {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+}
+
+.summaryGrid > div {
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border-right: 1px solid var(--color-line);
+}
+
+.summaryGrid > div:last-child {
+  border-right: 0;
+}
+
+.summaryGrid dt,
+.metricGrid dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.summaryGrid dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-summary);
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.profitValue {
+  font-variant-numeric: tabular-nums;
+}
+
+.quoteNotice {
+  margin: 0;
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-line);
+  background: var(--color-warning-soft);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.firstTrade {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--radius-panel);
+  background: var(--color-brand-soft);
+}
+
+.firstTrade h2 {
+  font-size: var(--font-size-lg);
+}
+
+.firstTrade p {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.ownerStack {
+  display: grid;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+  padding-bottom: var(--space-8);
+}
+
+.ownerSection {
+  --owner-color: var(--color-line-strong);
+  border: 1px solid var(--color-line);
+  border-left: var(--owner-rail-width) solid var(--owner-color);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.ownerSection[data-owner="병민"] {
+  --owner-color: var(--color-owner-byeongmin);
+}
+
+.ownerSection[data-owner="할머니"] {
+  --owner-color: var(--color-owner-grandmother);
+}
+
+.ownerSection[data-owner="아빠"] {
+  --owner-color: var(--color-owner-father);
+}
+
+.ownerHeader {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-surface-muted);
+}
+
+.ownerEyebrow {
+  color: var(--owner-color);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.ownerHeader h2 {
+  margin-top: var(--space-1);
+  font-size: var(--font-size-section);
+  line-height: 1.35;
+}
+
+.sortControls {
+  display: grid;
+  grid-template-columns: minmax(var(--sort-control-min), var(--sort-control-max)) auto;
+  align-items: end;
+  gap: var(--space-2);
+}
+
+.sortControls label {
+  grid-column: 1 / -1;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.tableWrap {
+  width: 100%;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: var(--font-size-sm);
+}
+
+.table th,
+.table td {
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--color-line);
+  text-align: right;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.table thead th {
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.table thead th:first-child,
+.table tbody th {
+  width: 17%;
+  padding-left: var(--space-5);
+  text-align: left;
+}
+
+.table thead th:last-child,
+.table tbody td:last-child {
+  padding-right: var(--space-5);
+}
+
+.table thead button {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+.table tbody tr:last-child th,
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table tbody tr:hover {
+  background: var(--color-surface-muted);
+}
+
+.table tfoot th,
+.table tfoot td {
+  border-top: var(--subtotal-rule-width) solid var(--owner-color);
+  border-bottom: 0;
+  background: var(--color-surface-muted);
+  font-weight: 800;
+}
+
+.table tfoot th {
+  padding-left: var(--space-5);
+  text-align: left;
+}
+
+.table tfoot td:last-child {
+  padding-right: var(--space-5);
+}
+
+.stockName {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--font-size-meta);
+  font-weight: 700;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.stockCode {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.cards {
+  padding: var(--space-4);
+}
+
+.cards > li {
+  min-width: 0;
+  list-style: none;
+}
+
+.card {
+  height: 100%;
+  padding: var(--space-4);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+
+.ownerTotals {
+  margin: 0 var(--space-4) var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-line);
+  border-top: var(--accent-rule-width) solid var(--owner-color);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-muted);
+}
+
+.ownerTotals h3 {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  line-height: 1.45;
+}
+
+.cardHeader {
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.cardHeader h3 {
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-base);
+  line-height: 1.45;
+}
+
+.cardHeader p {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.04em;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  margin: var(--space-4) 0 0;
+}
+
+.metricGrid > div {
+  min-width: 0;
+}
+
+.metricGrid dd {
+  margin: var(--space-1) 0 0;
+  color: var(--color-text);
+  font-size: var(--font-size-meta);
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.ownerTotals .metricGrid {
+  margin-top: var(--space-3);
+}
+
+.failedQuote {
+  display: block;
+  color: var(--color-warning);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.ownerEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 112px;
+  padding: var(--space-5);
+  color: var(--color-text-muted);
+}
+
+.ownerEmpty p {
+  margin: 0;
+}
+
+.showcase {
+  display: grid;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.showcase h2 {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+.showcaseRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+}
+
+.skeleton {
+  min-height: 140px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-muted);
+}
+
+@media (max-width: 1119px) {
+  .ownerHeader {
+    align-items: center;
+  }
+
+  .cards.cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+    margin: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .pageHeader,
+  .summaryHeading,
+  .firstTrade,
+  .ownerHeader,
+  .ownerEmpty {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summaryGrid > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .summaryGrid > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .summaryGrid > div {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .sortControls {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .cards.cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 359px) {
+  .summaryGrid,
+  .metricGrid,
+  .sortControls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .summaryGrid > div {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .sortControls label {
+    grid-column: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table tbody tr {
+    transition: none;
+  }
+}

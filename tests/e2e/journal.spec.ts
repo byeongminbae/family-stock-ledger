@@ -1,0 +1,248 @@
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import { expect, type Locator, type Page, test } from "@playwright/test";
+
+if (process.env.PLAYWRIGHT_BASE_URL === undefined) {
+  throw new Error("실데이터를 변경하는 journal E2E에는 격리된 PLAYWRIGHT_BASE_URL이 필요합니다.");
+}
+
+const evidenceDirectory = path.resolve(".omo/evidence/jusik-autocomplete-delete-qa-final");
+
+const routes = [
+  { name: "dashboard", path: "/" },
+  { name: "buy-history", path: "/buy-history" },
+  { name: "sell-history", path: "/sell-history" },
+] as const;
+
+const viewports = [
+  { name: "mobile-375", width: 375, height: 812 },
+  { name: "tablet-768", width: 768, height: 1024 },
+  { name: "desktop-1280", width: 1280, height: 900 },
+] as const;
+
+async function waitForRouteReady(page: Page, route: (typeof routes)[number]): Promise<void> {
+  await expect(page.locator("h1")).toBeVisible();
+  if (route.path === "/") {
+    await expect(page.getByText("전체 보유 현황")).toBeVisible();
+    return;
+  }
+
+  const label = route.path === "/buy-history" ? "매수" : "매도";
+  await expect(page.getByRole("heading", { name: `${label} 기록 추가` })).toBeVisible();
+  await expect(page.getByRole("button", { name: "검색 적용" })).toBeVisible();
+}
+
+async function selectStock(page: Page, query: string, expectedName: string) {
+  const combobox = page.getByRole("combobox", { name: /종목명/ });
+  await combobox.fill(query);
+  await expect(page.getByRole("option", { name: new RegExp(expectedName) }).first()).toBeVisible();
+  await combobox.press("ArrowDown");
+  await combobox.press("ArrowUp");
+  await combobox.press("Enter");
+  await expect(page.getByText(new RegExp(`선택: ${expectedName}`))).toBeVisible();
+}
+
+async function capture(page: Page, name: string, fullPage = true) {
+  await page.evaluate(() => document.fonts.ready);
+  const captureStyle = fullPage
+    ? await page.addStyleTag({ content: ".app-header { position: static !important; }" })
+    : null;
+  try {
+    if (fullPage) await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ fullPage, path: path.join(evidenceDirectory, name) });
+  } finally {
+    await captureStyle?.evaluate((element) => {
+      element.parentNode?.removeChild(element);
+    });
+  }
+}
+
+async function openDeletionConfirmation(
+  page: Page,
+  trigger: Locator,
+  side: "매수" | "매도",
+  count: number,
+): Promise<Locator> {
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: `${side} 기록 삭제` });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(`선택한 ${count}건의 ${side} 기록을 삭제할까요?`);
+  return dialog;
+}
+
+async function addTrade(
+  page: Page,
+  side: "매수" | "매도",
+  stock: { readonly query: string; readonly name: string },
+  quantity: string,
+  price: string,
+  owner: "병민" | "할머니" | "아빠" = "병민",
+) {
+  await selectStock(page, stock.query, stock.name);
+  await page.getByLabel("소유주 (필수)").selectOption({ label: owner });
+  await page.getByLabel(`${side} 수량 (필수)`).fill(quantity);
+  await page.getByLabel(`${side} 당시 단가 (필수)`).fill(price);
+  await page.getByRole("button", { name: `${side} 기록 저장` }).click();
+  await expect(page.getByText(`${side} 기록이 저장되었습니다.`)).toBeVisible();
+}
+
+test("real journal flow and complete responsive capture set", async ({ page }) => {
+  test.setTimeout(90_000);
+  await mkdir(evidenceDirectory, { recursive: true });
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  for (const route of routes) {
+    await page.goto(route.path);
+    await waitForRouteReady(page, route);
+    await capture(page, `${route.name}-empty-1280.png`);
+  }
+
+  await page.goto("/buy-history");
+  await page.getByRole("button", { name: "매수 기록 저장" }).click();
+  await expect(page.getByText("입력 내용을 확인해 주세요.")).toBeVisible();
+  await capture(page, "buy-history-validation-error-1280.png");
+
+  await page.goto("/buy-history");
+  await page.getByLabel("매수 일시 (필수)").fill("2026-08-07T10:30");
+  const stockSearch = page.getByRole("combobox", { name: /종목명/ });
+  await stockSearch.fill("삼성");
+  await expect(page.getByRole("option", { name: /삼성전자/ }).first()).toBeVisible();
+  await capture(page, "stock-search-popover-1280.png");
+  await stockSearch.fill("");
+  await addTrade(page, "매수", { query: "삼성", name: "삼성전자" }, "10", "70000");
+  await capture(page, "buy-history-submission-success-1280.png");
+  await addTrade(page, "매수", { query: "하이닉스", name: "SK하이닉스" }, "5", "100000");
+  await addTrade(page, "매수", { query: "삼성", name: "삼성전자" }, "3", "80000", "할머니");
+
+  await page.goto("/sell-history");
+  await page.getByLabel("매도 일시 (필수)").fill("2026-08-07T11:00");
+  await addTrade(page, "매도", { query: "삼성", name: "삼성전자" }, "2", "90000");
+  await expect(page.getByText(/이익 \+40,000원/).first()).toBeVisible();
+
+  await selectStock(page, "삼성", "삼성전자");
+  await page.getByLabel("매도 수량 (필수)").fill("99");
+  await page.getByLabel("매도 당시 단가 (필수)").fill("90000");
+  await page.getByRole("button", { name: "매도 기록 저장" }).click();
+  await expect(page.getByText(/보유 수량 8주를 초과할 수 없습니다/)).toBeVisible();
+  await capture(page, "sell-history-oversell-error-1280.png");
+
+  await page.goto("/buy-history");
+  await page.getByLabel("종목명 또는 종목코드").fill("하이닉스");
+  await page.getByRole("button", { name: "검색 적용" }).click();
+  await expect(page.getByText("검색 결과 1건")).toBeVisible();
+  await expect(page.getByRole("row", { name: /SK하이닉스/ })).toBeVisible();
+  await page.goto("/buy-history?q=하이닉스");
+  await expect(page.getByText("검색 결과 1건")).toBeVisible();
+  await capture(page, "buy-history-filter-applied-1280.png");
+  await page.getByRole("button", { name: "전체 초기화" }).click();
+  await expect(page.getByText("전체 3건")).toBeVisible();
+  await page.goto("/buy-history");
+  await expect(page.getByText("전체 3건")).toBeVisible();
+  await capture(page, "buy-history-filter-cleared-1280.png");
+
+  await page.getByRole("button", { name: "삭제", exact: true }).click();
+  const oversoldBuy = page.getByRole("row", { name: /삼성전자.*병민.*10주/ });
+  await oversoldBuy.getByRole("checkbox").check();
+  const rejectedBuyDialog = await openDeletionConfirmation(
+    page,
+    page.getByRole("button", { name: "선택 삭제" }),
+    "매수",
+    1,
+  );
+  await capture(page, "buy-history-delete-confirmation-1280.png", false);
+  await rejectedBuyDialog.getByRole("button", { name: "삭제", exact: true }).click();
+  await expect(
+    page.getByText(/삭제에 실패했습니다. 어떤 기록도 삭제되지 않았습니다/),
+  ).toBeVisible();
+  await expect(page.getByText(/이후 매도 시점의 보유 수량이 부족/)).toBeVisible();
+  await expect(oversoldBuy).toBeVisible();
+  await capture(page, "buy-history-delete-rollback-error-1280.png");
+  await page.getByRole("button", { name: "취소" }).click();
+
+  await page.getByRole("button", { name: "삭제", exact: true }).click();
+  const hynixBuy = page.getByRole("row", { name: /SK하이닉스.*병민.*5주/ });
+  await hynixBuy.getByRole("checkbox").check();
+  await capture(page, "buy-history-delete-selection-1280.png");
+  const dismissedBuyTrigger = page.getByRole("button", { name: "선택 삭제" });
+  const dismissedBuyDialog = await openDeletionConfirmation(page, dismissedBuyTrigger, "매수", 1);
+  await page.keyboard.press("Escape");
+  await expect(dismissedBuyDialog).toBeHidden();
+  await expect(dismissedBuyTrigger).toBeFocused();
+  await expect(page.getByText("1건 선택됨")).toBeVisible();
+  await capture(page, "buy-history-delete-confirmation-dismissed-1280.png");
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(page.getByRole("checkbox", { name: /SK하이닉스 거래 선택/ })).toBeChecked();
+  await capture(page, "buy-history-delete-selection-mobile-375.png");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  const acceptedBuyDialog = await openDeletionConfirmation(
+    page,
+    page.getByRole("button", { name: "선택 삭제" }),
+    "매수",
+    1,
+  );
+  await acceptedBuyDialog.getByRole("button", { name: "삭제", exact: true }).click();
+  await expect(page.getByText("매수 기록 1건을 삭제했습니다.")).toBeVisible();
+  await expect(page.getByRole("row", { name: /SK하이닉스/ })).toHaveCount(0);
+
+  await page.goto("/sell-history");
+  await page.getByRole("button", { name: "삭제", exact: true }).click();
+  await page
+    .getByRole("row", { name: /삼성전자.*병민.*2주/ })
+    .getByRole("checkbox")
+    .check();
+  await capture(page, "sell-history-delete-selection-1280.png");
+  const acceptedSellDialog = await openDeletionConfirmation(
+    page,
+    page.getByRole("button", { name: "선택 삭제" }),
+    "매도",
+    1,
+  );
+  await capture(page, "sell-history-delete-confirmation-1280.png", false);
+  await acceptedSellDialog.getByRole("button", { name: "삭제", exact: true }).click();
+  await expect(page.getByText("매도 기록 1건을 삭제했습니다.")).toBeVisible();
+  await expect(page.getByText("아직 매도 기록이 없습니다.")).toBeVisible();
+  await capture(page, "sell-history-deletion-success-1280.png");
+
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "병민", exact: true })).toBeVisible();
+  await expect(page.getByText("삼성전자", { exact: true }).first()).toBeVisible();
+  await page.getByLabel("병민 정렬 기준").selectOption("stockName");
+  await page.getByRole("button", { name: /병민 정렬 방향/ }).click();
+  await expect(page.getByLabel("할머니 정렬 기준")).toHaveValue("costBasis");
+  await expect(page.getByLabel("아빠 정렬 기준")).toHaveValue("costBasis");
+  const byeongminTotal = page.locator('section[data-owner="병민"] tfoot tr');
+  await expect(byeongminTotal).toContainText("합계 (1종목)");
+  await expect(byeongminTotal).toContainText("10주");
+  await expect(byeongminTotal).toContainText("70,000원");
+  await expect(byeongminTotal).toContainText("700,000원");
+  await capture(page, "dashboard-independent-sort-1280.png");
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    for (const route of routes) {
+      await page.goto(route.path);
+      await waitForRouteReady(page, route);
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow, `${route.name} ${viewport.name} horizontal overflow`).toBe(0);
+      if (route.path === "/" && viewport.width < 1120) {
+        await expect(page.locator('aside[aria-label="병민 합계"]')).toBeVisible();
+      }
+      const screenshotName =
+        route.name === "sell-history" && viewport.name === "desktop-1280"
+          ? "sell-history-page-shell-final-8f62c1-1280.png"
+          : `${route.name}-${viewport.name}.png`;
+      await capture(page, screenshotName);
+    }
+  }
+
+  await page.setViewportSize({ width: 1586, height: 992 });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "대시보드" })).toBeVisible();
+  await expect(page.getByText("전체 보유 현황")).toBeVisible();
+  await capture(page, "dashboard-reference-size.png", false);
+  expect(await page.locator('script[src*="react-scan"], script[src*="react-grab"]').count()).toBe(
+    0,
+  );
+});

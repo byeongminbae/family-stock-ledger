@@ -1,0 +1,26 @@
+# Dependencies and build output
+node_modules/
+.next/
+coverage/
+*.tsbuildinfo
+
+# Local environment files
+.env
+.env.*
+
+# Test artifacts
+playwright-report/
+blob-report/
+test-results/
+playwright/.auth/
+
+# Editor and local tool state
+.idea/
+.omo/
+.codegraph
+.agents/
+.codex/
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*

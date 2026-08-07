@@ -75,6 +75,7 @@ export function TradeHistoryTable({
             <th scope="col">종목명</th>
             <th scope="col">종목코드</th>
             <th scope="col">소유주</th>
+            <th scope="col">증권사</th>
             <th scope="col">수량</th>
             <th scope="col">당시 단가</th>
             <th scope="col">{label}액</th>
@@ -103,6 +104,7 @@ export function TradeHistoryTable({
               </th>
               <td className="money">{row.itemCode}</td>
               <td>{row.ownerName}</td>
+              <td>{row.brokerageName ?? "-"}</td>
               <td className="money">{formatInteger(row.quantity)}주</td>
               <td className="money">{formatWon(row.unitPrice)}</td>
               <td className="money">{formatWon(row.amount)}</td>
@@ -167,6 +169,10 @@ export function TradeHistoryCards({
               <div>
                 <dt>소유주</dt>
                 <dd>{row.ownerName}</dd>
+              </div>
+              <div>
+                <dt>증권사</dt>
+                <dd>{row.brokerageName ?? "-"}</dd>
               </div>
               <div>
                 <dt>{label} 수량</dt>

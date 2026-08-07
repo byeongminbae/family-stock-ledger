@@ -10,6 +10,7 @@ import { formatInteger, multiplyIntegers, seoulDateTimeLocalNow } from "./format
 import { type StockSelection, sideLabel, type TradeSide } from "./types";
 
 const inputSchema = z.object({
+  brokerageCode: z.string().min(1, "증권사를 선택해 주세요."),
   executedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "거래 일시를 입력해 주세요."),
   ownerId: z.string().regex(/^[1-3]$/, "소유주를 선택해 주세요."),
   quantity: z.string().regex(/^[1-9]\d*$/, "수량은 1 이상의 정수여야 합니다."),
@@ -30,18 +31,25 @@ const averageSchema = z.object({
   heldQuantity: z.string().regex(/^\d+$/),
 });
 
-export type TradeFieldName = "executedAt" | "stock" | "ownerId" | "quantity" | "unitPrice";
+export type TradeFieldName =
+  | "brokerageCode"
+  | "executedAt"
+  | "stock"
+  | "ownerId"
+  | "quantity"
+  | "unitPrice";
 type TradeFieldErrors = Partial<Record<TradeFieldName, string>>;
 
 const normalizeField = (name: string): TradeFieldName | null => {
   if (["itemCode", "securityName", "market", "isEtf"].includes(name)) return "stock";
-  if (["executedAt", "stock", "ownerId", "quantity", "unitPrice"].includes(name)) {
+  if (["brokerageCode", "executedAt", "stock", "ownerId", "quantity", "unitPrice"].includes(name)) {
     return name as TradeFieldName;
   }
   return null;
 };
 
 export interface TradeEntryInitialValues {
+  readonly brokerageCode: string;
   readonly executedAt: string;
   readonly ownerId: string;
   readonly stock: StockSelection;
@@ -65,6 +73,7 @@ export function useTradeEntryForm({
   const router = useRouter();
   const summaryRef = useRef<HTMLDivElement>(null);
   const [executedAt, setExecutedAt] = useState(initialValues?.executedAt ?? "");
+  const [brokerageCode, setBrokerageCode] = useState(initialValues?.brokerageCode ?? "");
   const [ownerId, setOwnerId] = useState(initialValues?.ownerId ?? "1");
   const [stock, setStock] = useState<StockSelection | null>(initialValues?.stock ?? null);
   const [quantity, setQuantity] = useState(initialValues?.quantity ?? "");
@@ -124,7 +133,13 @@ export function useTradeEntryForm({
     event.preventDefault();
     setMessage("");
     setMessageTone(null);
-    const parsed = inputSchema.safeParse({ executedAt, ownerId, quantity, unitPrice });
+    const parsed = inputSchema.safeParse({
+      brokerageCode,
+      executedAt,
+      ownerId,
+      quantity,
+      unitPrice,
+    });
     const nextErrors: TradeFieldErrors = {};
     if (!parsed.success) {
       for (const issue of parsed.error.issues) {
@@ -152,6 +167,7 @@ export function useTradeEntryForm({
     setSubmitting(true);
     const payload = {
       side,
+      brokerageCode: parsed.data.brokerageCode,
       executedAt: parsed.data.executedAt,
       itemCode: stock.code,
       securityName: stock.name,
@@ -203,6 +219,8 @@ export function useTradeEntryForm({
     summaryRef,
     executedAt,
     setExecutedAt,
+    brokerageCode,
+    setBrokerageCode,
     ownerId,
     setOwnerId,
     stock,

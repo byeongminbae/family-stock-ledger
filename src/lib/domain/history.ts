@@ -27,6 +27,8 @@ const rowSchema = z.object({
   amount: financeTextSchema,
   ownerId: ownerIdSchema,
   ownerName: z.string(),
+  brokerageCode: z.string().nullable(),
+  brokerageName: z.string().nullable(),
   market: z.string(),
   isEtf: z.boolean(),
   profit: financeTextSchema.nullable(),
@@ -42,6 +44,8 @@ export interface TradeHistoryRow {
   readonly amount: string;
   readonly ownerId: 1 | 2 | 3;
   readonly ownerName: string;
+  readonly brokerageCode: string | null;
+  readonly brokerageName: string | null;
   readonly market: string;
   readonly isEtf: boolean;
   readonly profit: string | null;
@@ -78,6 +82,7 @@ export async function listTradeHistory(
     WITH base AS (
       SELECT
         t.owner_id,
+        t.brokerage_code,
         t.executed_at,
         t.quantity::numeric AS quantity,
         t.unit_price::numeric AS unit_price,
@@ -102,6 +107,8 @@ export async function listTradeHistory(
         (${filters.itemCode}::text IS NULL OR
           position(upper(${filters.itemCode}) in upper(item_code)) > 0) AND
         (${filters.ownerId}::smallint IS NULL OR owner_id = ${filters.ownerId}) AND
+        (${filters.brokerageCode}::char(3) IS NULL OR
+          brokerage_code = ${filters.brokerageCode}) AND
         (${filters.quantityMin}::numeric IS NULL OR quantity >= ${filters.quantityMin}) AND
         (${filters.quantityMax}::numeric IS NULL OR quantity <= ${filters.quantityMax}) AND
         (${filters.unitPriceMin}::numeric IS NULL OR unit_price >= ${filters.unitPriceMin}) AND
@@ -125,7 +132,8 @@ export async function listTradeHistory(
 
   const rowsResult: unknown = await database`
     WITH base AS (
-      SELECT t.id, t.owner_id, o.name AS owner_name, t.executed_at,
+      SELECT t.id, t.owner_id, o.name AS owner_name, t.brokerage_code,
+        b.name AS brokerage_name, t.executed_at,
         t.quantity::numeric AS quantity, t.unit_price::numeric AS unit_price,
         t.quantity::numeric * t.unit_price::numeric AS amount,
         s.item_code, s.stock_name, s.market, s.is_etf,
@@ -133,12 +141,14 @@ export async function listTradeHistory(
       FROM trades t
       JOIN owners o ON o.id = t.owner_id
       JOIN securities s ON s.item_code = t.security_code
+      LEFT JOIN brokerages b ON b.code = t.brokerage_code
       WHERE t.side = ${side}
     )
     SELECT id::text AS id, executed_at AS "executedAt",
       stock_name AS "stockName", item_code AS "itemCode",
       quantity::text AS quantity, unit_price::text AS "unitPrice",
       amount::text AS amount, owner_id AS "ownerId", owner_name AS "ownerName",
+      brokerage_code AS "brokerageCode", brokerage_name AS "brokerageName",
       market, is_etf AS "isEtf",
       profit::text AS profit
     FROM base
@@ -153,6 +163,8 @@ export async function listTradeHistory(
       (${filters.itemCode}::text IS NULL OR
         position(upper(${filters.itemCode}) in upper(item_code)) > 0) AND
       (${filters.ownerId}::smallint IS NULL OR owner_id = ${filters.ownerId}) AND
+      (${filters.brokerageCode}::char(3) IS NULL OR
+        brokerage_code = ${filters.brokerageCode}) AND
       (${filters.quantityMin}::numeric IS NULL OR quantity >= ${filters.quantityMin}) AND
       (${filters.quantityMax}::numeric IS NULL OR quantity <= ${filters.quantityMax}) AND
       (${filters.unitPriceMin}::numeric IS NULL OR unit_price >= ${filters.unitPriceMin}) AND

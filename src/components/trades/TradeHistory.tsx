@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { StatusMessage } from "@/components/ui/status-message";
+import type { Brokerage } from "@/lib/domain/brokerages";
 
 import { TradeDeleteConfirmationDialog } from "./TradeDeleteConfirmationDialog";
 import { TradeEditDialog } from "./TradeEditDialog";
@@ -13,13 +14,20 @@ import { sideLabel, type TradeHistoryRow, type TradeSide } from "./types";
 import { useTradeDeletion } from "./useTradeDeletion";
 
 interface TradeHistoryProps {
+  readonly brokerages: readonly Brokerage[];
   readonly side: TradeSide;
   readonly rows: readonly TradeHistoryRow[];
   readonly total: number;
   readonly hasFilters?: boolean;
 }
 
-export function TradeHistory({ side, rows, total, hasFilters = false }: TradeHistoryProps) {
+export function TradeHistory({
+  brokerages,
+  side,
+  rows,
+  total,
+  hasFilters = false,
+}: TradeHistoryProps) {
   const label = sideLabel(side);
   const deletion = useTradeDeletion({ rows, side });
   const [editingRow, setEditingRow] = useState<TradeHistoryRow | null>(null);
@@ -127,6 +135,7 @@ export function TradeHistory({ side, rows, total, hasFilters = false }: TradeHis
         side={side}
       />
       <TradeEditDialog
+        brokerages={brokerages}
         onCancel={closeEdit}
         onSaved={savedEdit}
         open={editingRow !== null}

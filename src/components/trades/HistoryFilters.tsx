@@ -2,9 +2,11 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
+import type { Brokerage } from "@/lib/domain/brokerages";
 import { HistoryFilterFields } from "./HistoryFilterFields";
 import {
   BASE_FILTER_KEYS,
+  brokerageFilterName,
   FILTER_LABELS,
   FILTER_RANGES,
   ownerFilterName,
@@ -14,10 +16,11 @@ import styles from "./history-filters.module.css";
 import type { TradeSide } from "./types";
 
 interface HistoryFiltersProps {
+  readonly brokerages: readonly Brokerage[];
   readonly side: TradeSide;
 }
 
-export function HistoryFilters({ side }: HistoryFiltersProps) {
+export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -97,7 +100,11 @@ export function HistoryFilters({ side }: HistoryFiltersProps) {
         onSubmit={handleSubmit}
         aria-busy={isPending}
       >
-        <HistoryFilterFields side={side} value={(key) => searchParams.get(key) ?? ""} />
+        <HistoryFilterFields
+          brokerages={brokerages}
+          side={side}
+          value={(key) => searchParams.get(key) ?? ""}
+        />
         <div className={styles.actions}>
           <button
             className="button button--secondary"
@@ -127,7 +134,12 @@ export function HistoryFilters({ side }: HistoryFiltersProps) {
               type="button"
               onClick={() => removeFilter(key)}
             >
-              {FILTER_LABELS[key]}: {key === "ownerId" ? ownerFilterName(value) : value}{" "}
+              {FILTER_LABELS[key]}:{" "}
+              {key === "ownerId"
+                ? ownerFilterName(value)
+                : key === "brokerageCode"
+                  ? brokerageFilterName(brokerages, value)
+                  : value}{" "}
               <span aria-hidden="true">×</span>
               <span className="sr-only"> 필터 제거</span>
             </button>

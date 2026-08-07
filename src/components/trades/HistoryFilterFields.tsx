@@ -1,3 +1,4 @@
+import type { Brokerage } from "@/lib/domain/brokerages";
 import { FILTER_RANGES, PROFIT_RANGE } from "./history-filter-config";
 import styles from "./history-filters.module.css";
 import { OWNERS, sideLabel, type TradeSide } from "./types";
@@ -59,11 +60,12 @@ function RangeInput({
 }
 
 interface HistoryFilterFieldsProps {
+  readonly brokerages: readonly Brokerage[];
   readonly side: TradeSide;
   readonly value: (key: string) => string;
 }
 
-export function HistoryFilterFields({ side, value }: HistoryFilterFieldsProps) {
+export function HistoryFilterFields({ brokerages, side, value }: HistoryFilterFieldsProps) {
   return (
     <>
       <div className="field">
@@ -117,6 +119,24 @@ export function HistoryFilterFields({ side, value }: HistoryFilterFieldsProps) {
           {OWNERS.map((owner) => (
             <option key={owner.id} value={owner.id}>
               {owner.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="field">
+        <label className="field-label" htmlFor="filter-brokerage">
+          증권사
+        </label>
+        <select
+          id="filter-brokerage"
+          className="control"
+          name="brokerageCode"
+          defaultValue={value("brokerageCode")}
+        >
+          <option value="">전체</option>
+          {brokerages.map((brokerage) => (
+            <option key={brokerage.code} value={brokerage.code}>
+              {brokerage.name}
             </option>
           ))}
         </select>

@@ -1,5 +1,10 @@
 import { historyBoundary } from "@/lib/domain/time";
-import { financeTextSchema, nonNegativeIntegerTextSchema, ownerIdSchema } from "@/lib/domain/types";
+import {
+  brokerageCodeSchema,
+  financeTextSchema,
+  nonNegativeIntegerTextSchema,
+  ownerIdSchema,
+} from "@/lib/domain/types";
 
 export type RawSearchParams = Readonly<Record<string, string | readonly string[] | undefined>>;
 
@@ -10,6 +15,7 @@ export interface HistoryFilters {
   readonly stockName: string | null;
   readonly itemCode: string | null;
   readonly ownerId: 1 | 2 | 3 | null;
+  readonly brokerageCode: string | null;
   readonly quantityMin: string | null;
   readonly quantityMax: string | null;
   readonly unitPriceMin: string | null;
@@ -51,6 +57,7 @@ function dateFilter(params: RawSearchParams, key: string): string | null {
 
 export function parseTradeFilters(params: RawSearchParams): HistoryFilters {
   const ownerResult = ownerIdSchema.safeParse(Number(firstValue(params, "ownerId")));
+  const brokerageResult = brokerageCodeSchema.safeParse(firstValue(params, "brokerageCode"));
   const pageValue = Number(firstValue(params, "page"));
   const page = Number.isSafeInteger(pageValue) && pageValue > 0 ? pageValue : 1;
 
@@ -61,6 +68,7 @@ export function parseTradeFilters(params: RawSearchParams): HistoryFilters {
     stockName: textFilter(params, "stockName"),
     itemCode: textFilter(params, "itemCode"),
     ownerId: ownerResult.success ? ownerResult.data : null,
+    brokerageCode: brokerageResult.success ? brokerageResult.data : null,
     quantityMin: integerFilter(params, "quantityMin"),
     quantityMax: integerFilter(params, "quantityMax"),
     unitPriceMin: integerFilter(params, "unitPriceMin"),

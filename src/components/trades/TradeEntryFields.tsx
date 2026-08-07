@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import type { Brokerage } from "@/lib/domain/brokerages";
 
 import { formatInteger, formatWon } from "./format";
 import { StockCombobox } from "./StockCombobox";
@@ -7,6 +8,7 @@ import { OWNERS, sideLabel, type TradeSide } from "./types";
 import type { TradeFieldName, useTradeEntryForm } from "./useTradeEntryForm";
 
 interface TradeEntryFieldsProps {
+  readonly brokerages: readonly Brokerage[];
   readonly compact?: boolean;
   readonly form: ReturnType<typeof useTradeEntryForm>;
   readonly formId: string;
@@ -16,6 +18,7 @@ interface TradeEntryFieldsProps {
 }
 
 export function TradeEntryFields({
+  brokerages,
   compact = false,
   form,
   formId,
@@ -95,6 +98,33 @@ export function TradeEntryFields({
               </option>
             ))}
           </select>
+        </div>
+        <div className="field">
+          <label className="field-label" htmlFor={id("brokerage")}>
+            증권사 <span>(필수)</span>
+          </label>
+          <select
+            aria-describedby={fieldError("brokerageCode") ? id("brokerage-error") : undefined}
+            aria-invalid={fieldError("brokerageCode") ? true : undefined}
+            className="control"
+            disabled={form.submitting}
+            id={id("brokerage")}
+            onChange={(event) => form.setBrokerageCode(event.target.value)}
+            required
+            value={form.brokerageCode}
+          >
+            <option value="">선택해 주세요</option>
+            {brokerages.map((brokerage) => (
+              <option key={brokerage.code} value={brokerage.code}>
+                {brokerage.name}
+              </option>
+            ))}
+          </select>
+          {fieldError("brokerageCode") ? (
+            <p id={id("brokerage-error")} className="field-error">
+              {fieldError("brokerageCode")}
+            </p>
+          ) : null}
         </div>
         <div className="field">
           <label className="field-label" htmlFor={id("quantity")}>

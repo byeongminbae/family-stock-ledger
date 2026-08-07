@@ -8,6 +8,7 @@ const positiveBigIntSchema = z
   .regex(/^[1-9]\d*$/, "1 이상의 정수를 입력해 주세요.")
   .refine((value) => BigInt(value) <= MAX_BIGINT, "입력값이 너무 큽니다.");
 const tradeRequestSchema = z.strictObject({
+  brokerageCode: z.string().regex(/^\d{3}$/, "증권사를 선택해 주세요."),
   executedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
   isEtf: z.boolean(),
   itemCode: z.string().regex(/^[0-9A-Z]{6}$/),
@@ -44,6 +45,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   try {
     const trade = await createTrade({
+      brokerageCode: parsed.data.brokerageCode,
       executedAt,
       isEtf: parsed.data.isEtf,
       itemCode: parsed.data.itemCode,
@@ -113,6 +115,7 @@ export async function PATCH(request: Request): Promise<NextResponse> {
 
   try {
     const trade = await updateTrade({
+      brokerageCode: parsed.data.brokerageCode,
       executedAt,
       id: BigInt(parsed.data.id),
       isEtf: parsed.data.isEtf,

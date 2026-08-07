@@ -12,6 +12,7 @@ import {
   type Transaction,
 } from "@/lib/domain/trade-replay";
 import {
+  brokerageCodeSchema,
   financeTextSchema,
   itemCodeSchema,
   ownerIdSchema,
@@ -30,11 +31,13 @@ const tradeInputSchema = z.object({
   market: z.string().trim().min(1).max(40),
   isEtf: z.boolean(),
   ownerId: ownerIdSchema,
+  brokerageCode: brokerageCodeSchema,
   quantity: z.bigint().positive(),
   unitPrice: z.bigint().positive(),
 });
 const updateTradeInputSchema = tradeInputSchema.extend({ id: z.bigint().positive() });
 const tradeIdResultSchema = z.array(z.object({ id: financeTextSchema }));
+const brokerageResultSchema = z.array(z.object({ code: brokerageCodeSchema }));
 const selectedTradeSchema = z.array(
   z.object({
     id: financeTextSchema,
@@ -92,21 +95,33 @@ async function upsertSecurity(transaction: Transaction, trade: ParsedTrade): Pro
   `;
 }
 
+async function assertBrokerageExists(transaction: Transaction, code: string): Promise<void> {
+  const result: unknown = await transaction`
+    SELECT code FROM brokerages WHERE code = ${code} FOR KEY SHARE
+  `;
+  if (brokerageResultSchema.parse(result).length !== 1) {
+    throw new TradeDomainError("INVALID_TRADE", "등록된 증권사 코드를 선택해 주세요.");
+  }
+}
+
 export async function createTrade(
   input: TradeInput,
   database: Database = db,
 ): Promise<{ readonly id: string }> {
   const trade = parseTrade(input);
   return database.begin(async (transaction) => {
+    await assertBrokerageExists(transaction, trade.brokerageCode);
     const key = ledgerKey(trade);
     await lockLedgers(transaction, [key]);
     await upsertSecurity(transaction, trade);
     const initialProfit = trade.side === "SELL" ? "0" : null;
     const result: unknown = await transaction`
       INSERT INTO trades (
-        owner_id, security_code, side, executed_at, quantity, unit_price, realized_profit
+        owner_id, security_code, brokerage_code, side, executed_at, quantity, unit_price,
+        realized_profit
       ) VALUES (
-        ${trade.ownerId}, ${trade.itemCode}, ${trade.side}, ${trade.executedAt},
+        ${trade.ownerId}, ${trade.itemCode}, ${trade.brokerageCode}, ${trade.side},
+        ${trade.executedAt},
         ${trade.quantity.toString()}::bigint, ${trade.unitPrice.toString()}::bigint,
         ${initialProfit}::numeric
       ) RETURNING id::text AS id
@@ -127,6 +142,7 @@ export async function updateTrade(
   const trade = parseUpdate(input);
   const id = trade.id.toString();
   return database.begin(async (transaction) => {
+    await assertBrokerageExists(transaction, trade.brokerageCode);
     await lockTradeIds(transaction, [id]);
     const selectedResult: unknown = await transaction`
       SELECT id::text AS id, owner_id AS "ownerId", security_code AS "securityCode",
@@ -158,7 +174,8 @@ export async function updateTrade(
     await upsertSecurity(transaction, trade);
     await transaction`
       UPDATE trades SET owner_id = ${trade.ownerId}, security_code = ${trade.itemCode},
-        executed_at = ${trade.executedAt}, quantity = ${trade.quantity.toString()}::bigint,
+        brokerage_code = ${trade.brokerageCode}, executed_at = ${trade.executedAt},
+        quantity = ${trade.quantity.toString()}::bigint,
         unit_price = ${trade.unitPrice.toString()}::bigint,
         realized_profit = ${trade.side === "SELL" ? "0" : null}::numeric
       WHERE id = ${id}::bigint AND side = ${trade.side}

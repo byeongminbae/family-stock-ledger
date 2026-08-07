@@ -25,6 +25,7 @@ const createTradeMock = vi.mocked(createTrade);
 const deleteTradesMock = vi.mocked(deleteTrades);
 const updateTradeMock = vi.mocked(updateTrade);
 const validTrade = {
+  brokerageCode: "240",
   executedAt: "2026-08-07T10:30",
   isEtf: false,
   itemCode: "005930",
@@ -71,6 +72,7 @@ describe("POST /api/trades", () => {
     expect(response.status).toBe(201);
     await expect(response.json()).resolves.toEqual({ id: "42", ok: true });
     expect(createTradeMock).toHaveBeenCalledWith({
+      brokerageCode: "240",
       executedAt: new Date("2026-08-07T10:30:00+09:00"),
       isEtf: false,
       itemCode: "005930",
@@ -92,6 +94,17 @@ describe("POST /api/trades", () => {
         executedAt: "올바른 한국시간 거래일시를 입력해 주세요.",
       },
       message: "입력값을 확인해 주세요.",
+      ok: false,
+    });
+    expect(createTradeMock).not.toHaveBeenCalled();
+  });
+
+  it("requires an exactly three-digit brokerage code before touching the domain", async () => {
+    const response = await POST(tradeRequest({ ...validTrade, brokerageCode: "12" }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      fieldErrors: { brokerageCode: expect.any(String) },
       ok: false,
     });
     expect(createTradeMock).not.toHaveBeenCalled();
@@ -126,6 +139,7 @@ describe("PATCH /api/trades", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ id: "42", ok: true });
     expect(updateTradeMock).toHaveBeenCalledWith({
+      brokerageCode: "240",
       executedAt: new Date("2026-08-07T10:30:00+09:00"),
       id: 42n,
       isEtf: false,
@@ -143,6 +157,17 @@ describe("PATCH /api/trades", () => {
     const response = await PATCH(patchRequest({ ...validTrade, id: "0" }));
 
     expect(response.status).toBe(400);
+    expect(updateTradeMock).not.toHaveBeenCalled();
+  });
+
+  it("requires an exactly three-digit brokerage code before touching the domain", async () => {
+    const response = await PATCH(patchRequest({ ...validTrade, brokerageCode: "1234", id: "42" }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      fieldErrors: { brokerageCode: expect.any(String) },
+      ok: false,
+    });
     expect(updateTradeMock).not.toHaveBeenCalled();
   });
 

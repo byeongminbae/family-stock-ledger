@@ -59,4 +59,12 @@ describe("history filters", () => {
     expect(filters.profitMax).toBe("-1");
     expect(filters.amountMin).toBeNull();
   });
+
+  it("accepts only a three-digit brokerage code", () => {
+    const valid = parseTradeFilters({ brokerageCode: "264" });
+    const invalid = parseTradeFilters({ brokerageCode: "26A" });
+
+    expect(valid.brokerageCode).toBe("264");
+    expect(invalid.brokerageCode).toBeNull();
+  });
 });

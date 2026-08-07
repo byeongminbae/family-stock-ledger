@@ -35,6 +35,7 @@ async function addTrade(
   const previousRowCount = await historyRows.count();
   await page.getByLabel(`${side} 일시 (필수)`).fill(executedAt);
   await selectStock(page, "삼성전자");
+  await page.getByLabel("증권사 (필수)").selectOption("240");
   await page.getByLabel(`${side} 수량 (필수)`).fill(quantity);
   await page.getByLabel(`${side} 당시 단가 (필수)`).fill(unitPrice);
   const responsePromise = page.waitForResponse(
@@ -54,6 +55,7 @@ async function addTrade(
   createdTradeIds[side === "매수" ? "BUY" : "SELL"].push(payload.id);
   await expect(page.getByText(`${side} 기록이 저장되었습니다.`)).toBeVisible();
   await expect(historyRows).toHaveCount(previousRowCount + 1);
+  await expect(page.getByRole("row", { name: /삼성전자.*삼성증권/ }).first()).toBeVisible();
 }
 
 async function screenshot(page: Page, name: string, fullPage = true): Promise<void> {
@@ -121,6 +123,7 @@ test("creates chronological trades then edits buy and sell through the accessibl
   await expect(buyDialog.getByLabel("매수 일시 (필수)")).toHaveValue("2026-08-07T09:00");
   await expect(buyDialog.getByText(/선택: 삼성전자/)).toBeVisible();
   await expect(buyDialog.getByLabel("소유주 (필수)")).toHaveValue("1");
+  await expect(buyDialog.getByLabel("증권사 (필수)")).toHaveValue("240");
   await expect(buyDialog.getByLabel("매수 수량 (필수)")).toHaveValue("100");
   await expect(buyDialog.getByLabel("매수 당시 단가 (필수)")).toHaveValue("7000");
   await expect(buyDialog.getByText("700,000원")).toBeVisible();
@@ -137,12 +140,18 @@ test("creates chronological trades then edits buy and sell through the accessibl
   await expect(page.getByText("매수 기록을 수정했습니다.", { exact: true })).toBeVisible();
   await expect(page.getByRole("row", { name: /삼성전자.*120주.*7,000원/ })).toBeVisible();
 
+  await page.getByLabel("증권사", { exact: true }).selectOption("240");
+  await page.getByRole("button", { name: "검색 적용" }).click();
+  await expect(page).toHaveURL(/brokerageCode=240/);
+  await expect(page.getByRole("button", { name: /증권사: 삼성증권/ })).toBeVisible();
+
   await page.goto("/sell-history");
   await expect(page.getByText(/이익 \+77,273원/).first()).toBeVisible();
   const sellRow = page.getByRole("row", { name: /삼성전자.*50주.*9,000원/ });
   const sellEdit = editAction(sellRow);
   await sellEdit.click();
   const sellDialog = page.getByRole("dialog", { name: "매도 기록 수정" });
+  await expect(sellDialog.getByLabel("증권사 (필수)")).toHaveValue("240");
   await expect(sellDialog.getByText("손익 재계산")).toBeVisible();
   await expect(
     sellDialog.getByText(/저장 시 거래 시각 순으로 이 매도와 이후 손익을 다시 계산합니다/),

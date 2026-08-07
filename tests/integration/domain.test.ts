@@ -33,7 +33,14 @@ function day(number: number): string {
 }
 
 function tradeCommon(itemCode: string, ownerId: 1 | 2 | 3, stockName: string) {
-  return { itemCode, stockName, market: "KRX", isEtf: false, ownerId } as const;
+  return {
+    itemCode,
+    stockName,
+    market: "KRX",
+    isEtf: false,
+    ownerId,
+    brokerageCode: "264",
+  } as const;
 }
 
 async function clearTestTrades() {
@@ -47,6 +54,7 @@ afterAll(async () => {
   await database.end({ timeout: 5 });
 });
 
+// allow: SIZE_OK — one shared PostgreSQL lifecycle keeps fixed-code ledger scenarios sequential.
 describe("trade ledger integration", () => {
   it("rejects a sell that makes any chronological balance negative", async () => {
     await createTrade(
@@ -58,6 +66,7 @@ describe("trade ledger integration", () => {
         market: "KRX",
         isEtf: false,
         ownerId: 1,
+        brokerageCode: "264",
         quantity: 10n,
         unitPrice: 100n,
       },
@@ -74,6 +83,7 @@ describe("trade ledger integration", () => {
           market: "KRX",
           isEtf: false,
           ownerId: 1,
+          brokerageCode: "264",
           quantity: 1n,
           unitPrice: 120n,
         },
@@ -94,6 +104,7 @@ describe("trade ledger integration", () => {
         market: "KRX",
         isEtf: false,
         ownerId: 2,
+        brokerageCode: "264",
         quantity: 10n,
         unitPrice: 100n,
       },
@@ -109,6 +120,7 @@ describe("trade ledger integration", () => {
           market: "KRX",
           isEtf: false,
           ownerId: 2,
+          brokerageCode: "264",
           quantity: 7n,
           unitPrice: 120n,
         },
@@ -124,12 +136,16 @@ describe("trade ledger integration", () => {
   });
 
   it("keeps a past sell profit unchanged when a later buy changes the current average", async () => {
-    const common: Pick<TradeInput, "itemCode" | "stockName" | "market" | "isEtf" | "ownerId"> = {
+    const common: Pick<
+      TradeInput,
+      "itemCode" | "stockName" | "market" | "isEtf" | "ownerId" | "brokerageCode"
+    > = {
       itemCode: "TST003",
       stockName: "평균단가 검증",
       market: "KRX",
       isEtf: false,
       ownerId: 3,
+      brokerageCode: "264",
     };
     await createTrade(
       {
@@ -395,12 +411,16 @@ describe("trade ledger integration", () => {
   });
 
   it("rolls back a buy deletion that would make a later sale oversold", async () => {
-    const common: Pick<TradeInput, "itemCode" | "stockName" | "market" | "isEtf" | "ownerId"> = {
+    const common: Pick<
+      TradeInput,
+      "itemCode" | "stockName" | "market" | "isEtf" | "ownerId" | "brokerageCode"
+    > = {
       itemCode: "TST004",
       stockName: "삭제 잔고 검증",
       market: "KRX",
       isEtf: false,
       ownerId: 1,
+      brokerageCode: "264",
     };
     const buy = await createTrade(
       {
@@ -454,12 +474,16 @@ describe("trade ledger integration", () => {
   });
 
   it("deletes all selected rows of the requested side together", async () => {
-    const common: Pick<TradeInput, "itemCode" | "stockName" | "market" | "isEtf" | "ownerId"> = {
+    const common: Pick<
+      TradeInput,
+      "itemCode" | "stockName" | "market" | "isEtf" | "ownerId" | "brokerageCode"
+    > = {
       itemCode: "TST005",
       stockName: "일괄 삭제 검증",
       market: "KRX",
       isEtf: false,
       ownerId: 2,
+      brokerageCode: "264",
     };
     const firstBuy = await createTrade(
       {
@@ -500,6 +524,7 @@ describe("trade ledger integration", () => {
         market: "KRX",
         isEtf: false,
         ownerId: 2,
+        brokerageCode: "264",
         quantity: 10n,
         unitPrice: 100n,
       },

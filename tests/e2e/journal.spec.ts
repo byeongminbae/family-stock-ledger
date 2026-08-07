@@ -79,6 +79,7 @@ async function addTrade(
   owner: "병민" | "할머니" | "아빠" = "병민",
 ) {
   await selectStock(page, stock.query, stock.name);
+  await page.getByLabel("증권사 (필수)").selectOption("240");
   await page.getByLabel("소유주 (필수)").selectOption({ label: owner });
   await page.getByLabel(`${side} 수량 (필수)`).fill(quantity);
   await page.getByLabel(`${side} 당시 단가 (필수)`).fill(price);
@@ -110,6 +111,7 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
   await capture(page, "stock-search-popover-1280.png");
   await stockSearch.fill("");
   await addTrade(page, "매수", { query: "삼성", name: "삼성전자" }, "10", "70000");
+  await expect(page.getByRole("row", { name: /삼성전자.*삼성증권/ })).toBeVisible();
   await capture(page, "buy-history-submission-success-1280.png");
   await addTrade(page, "매수", { query: "하이닉스", name: "SK하이닉스" }, "5", "100000");
   await addTrade(page, "매수", { query: "삼성", name: "삼성전자" }, "3", "80000", "할머니");
@@ -127,6 +129,13 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
   await capture(page, "sell-history-oversell-error-1280.png");
 
   await page.goto("/buy-history");
+  await page.getByLabel("증권사", { exact: true }).selectOption("240");
+  await page.getByRole("button", { name: "검색 적용" }).click();
+  await expect(page).toHaveURL(/brokerageCode=240/);
+  await expect(page.getByRole("button", { name: /증권사: 삼성증권/ })).toBeVisible();
+  await expect(page.getByRole("row", { name: /삼성증권/ })).toHaveCount(3);
+  await page.getByRole("button", { name: "전체 초기화" }).click();
+  await expect(page).toHaveURL(/\/buy-history$/);
   await page.getByLabel("종목명 또는 종목코드").fill("하이닉스");
   await page.getByRole("button", { name: "검색 적용" }).click();
   await expect(page.getByText("검색 결과 1건")).toBeVisible();

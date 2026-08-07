@@ -3,9 +3,9 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: "${POSTGRES_DB:-jusik}"
-      POSTGRES_USER: "${POSTGRES_USER:-jusik}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-jusik_local}"
+      POSTGRES_DB: "${POSTGRES_DB:-family_stock_ledger}"
+      POSTGRES_USER: "${POSTGRES_USER:-sample_user}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-sample_password}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
@@ -13,9 +13,9 @@ services:
       retries: 10
       start_period: 5s
     ports:
-      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - /volume1/docker/family-stock-ledger/volume:/var/lib/postgresql/data
       # The official image runs init scripts only when PGDATA is a fresh, empty volume.
       # Keeping an existing volume means schema.sql is intentionally not run again.
       - ./schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
@@ -26,14 +26,11 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-jusik}:${POSTGRES_PASSWORD:-jusik_local}@db:5432/${POSTGRES_DB:-jusik}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-sample_user}:${POSTGRES_PASSWORD:-sample_password}@db:5432/${POSTGRES_DB:-family_stock_ledger}"
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "127.0.0.1:${APP_PORT:-3000}:3000"
-
-volumes:
-  postgres_data:
+      - "${APP_PORT:-3000}:3000"

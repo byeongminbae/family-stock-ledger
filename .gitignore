@@ -6,7 +6,7 @@ coverage/
 
 # Local environment files
 .env
-.env.*
+.env
 
 # Test artifacts
 playwright-report/

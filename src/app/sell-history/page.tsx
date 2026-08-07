@@ -7,6 +7,7 @@ import {
   TradeEntryForm,
   TradeHistory,
 } from "@/components/trades";
+import { listBrokerages } from "@/lib/domain/brokerages";
 import { listTradeHistory } from "@/lib/domain/history";
 
 export const metadata: Metadata = {
@@ -25,6 +26,7 @@ const FILTER_KEYS = [
   "to",
   "q",
   "ownerId",
+  "brokerageCode",
   "quantityMin",
   "quantityMax",
   "unitPriceMin",
@@ -46,7 +48,10 @@ function hasActiveFilters(searchParams: Awaited<SellHistoryPageProps["searchPara
 
 export default async function SellHistoryPage({ searchParams }: SellHistoryPageProps) {
   const rawSearchParams = await searchParams;
-  const result = await listTradeHistory("SELL", rawSearchParams);
+  const [result, brokerages] = await Promise.all([
+    listTradeHistory("SELL", rawSearchParams),
+    listBrokerages(),
+  ]);
   const filtered = hasActiveFilters(rawSearchParams);
   const showFilteredEmptyState = filtered && result.unfilteredTotal > 0;
 
@@ -60,7 +65,7 @@ export default async function SellHistoryPage({ searchParams }: SellHistoryPageP
         </p>
       </header>
 
-      <TradeEntryForm side="SELL" />
+      <TradeEntryForm brokerages={brokerages} side="SELL" />
 
       <section className="history-section" aria-labelledby="sell-history-title">
         <div className="section-heading">
@@ -76,13 +81,14 @@ export default async function SellHistoryPage({ searchParams }: SellHistoryPageP
         </div>
 
         <Suspense fallback={<p role="status">매도 필터를 불러오는 중입니다.</p>}>
-          <HistoryFilters side="SELL" />
+          <HistoryFilters brokerages={brokerages} side="SELL" />
         </Suspense>
         <TradeHistory
           side="SELL"
           rows={result.rows}
           total={result.total}
           hasFilters={showFilteredEmptyState}
+          brokerages={brokerages}
         />
         <Suspense fallback={null}>
           <HistoryPagination page={result.page} totalPages={result.totalPages} />

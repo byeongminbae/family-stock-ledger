@@ -1,16 +1,19 @@
 "use client";
 
+import type { Brokerage } from "@/lib/domain/brokerages";
+
 import { TradeEntryFields } from "./TradeEntryFields";
 import styles from "./trade-entry-form.module.css";
 import { sideLabel, type TradeSide } from "./types";
 import { useTradeEntryForm } from "./useTradeEntryForm";
 
 interface TradeEntryFormProps {
+  readonly brokerages: readonly Brokerage[];
   readonly side: TradeSide;
   readonly onSaved?: ((tradeId: string) => void) | undefined;
 }
 
-export function TradeEntryForm({ side, onSaved }: TradeEntryFormProps) {
+export function TradeEntryForm({ brokerages, side, onSaved }: TradeEntryFormProps) {
   const label = sideLabel(side);
   const form = useTradeEntryForm({ side, onSaved });
 
@@ -24,6 +27,7 @@ export function TradeEntryForm({ side, onSaved }: TradeEntryFormProps) {
         <p>금액은 수량과 당시 단가로 자동 계산됩니다.</p>
       </div>
       <TradeEntryFields
+        brokerages={brokerages}
         form={form}
         formId={`${side}-create`}
         side={side}

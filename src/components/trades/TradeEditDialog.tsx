@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { Brokerage } from "@/lib/domain/brokerages";
 
 import { isoInstantToSeoulDateTimeLocal } from "./format";
 import { TradeEntryFields } from "./TradeEntryFields";
@@ -9,6 +10,7 @@ import { sideLabel, type TradeHistoryRow, type TradeSide } from "./types";
 import { useTradeEntryForm } from "./useTradeEntryForm";
 
 interface TradeEditDialogProps {
+  readonly brokerages: readonly Brokerage[];
   readonly open: boolean;
   readonly row: TradeHistoryRow | null;
   readonly side: TradeSide;
@@ -17,18 +19,20 @@ interface TradeEditDialogProps {
 }
 
 interface TradeEditFormProps {
+  readonly brokerages: readonly Brokerage[];
   readonly onCancel: () => void;
   readonly row: TradeHistoryRow;
   readonly side: TradeSide;
   readonly onSaved: () => void;
 }
 
-function TradeEditForm({ onCancel, onSaved, row, side }: TradeEditFormProps) {
+function TradeEditForm({ brokerages, onCancel, onSaved, row, side }: TradeEditFormProps) {
   const label = sideLabel(side);
   const form = useTradeEntryForm({
     side,
     tradeId: row.id,
     initialValues: {
+      brokerageCode: row.brokerageCode ?? "",
       executedAt: isoInstantToSeoulDateTimeLocal(row.executedAt),
       ownerId: row.ownerId.toString(),
       stock: {
@@ -45,6 +49,7 @@ function TradeEditForm({ onCancel, onSaved, row, side }: TradeEditFormProps) {
 
   return (
     <TradeEntryFields
+      brokerages={brokerages}
       compact
       form={form}
       formId={`${side}-edit-${row.id}`}
@@ -55,7 +60,14 @@ function TradeEditForm({ onCancel, onSaved, row, side }: TradeEditFormProps) {
   );
 }
 
-export function TradeEditDialog({ onCancel, onSaved, open, row, side }: TradeEditDialogProps) {
+export function TradeEditDialog({
+  brokerages,
+  onCancel,
+  onSaved,
+  open,
+  row,
+  side,
+}: TradeEditDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const label = sideLabel(side);
   const titleId = `${side}-edit-title`;
@@ -83,10 +95,19 @@ export function TradeEditDialog({ onCancel, onSaved, open, row, side }: TradeEdi
       <div className={styles.editContent}>
         <div>
           <h3 id={titleId}>{label} 기록 수정</h3>
-          <p id={descriptionId}>기록의 거래일시, 종목, 소유주, 수량, 단가를 수정할 수 있습니다.</p>
+          <p id={descriptionId}>
+            기록의 거래일시, 종목, 소유주, 증권사, 수량, 단가를 수정할 수 있습니다.
+          </p>
         </div>
         {row ? (
-          <TradeEditForm key={row.id} onCancel={onCancel} onSaved={onSaved} row={row} side={side} />
+          <TradeEditForm
+            brokerages={brokerages}
+            key={row.id}
+            onCancel={onCancel}
+            onSaved={onSaved}
+            row={row}
+            side={side}
+          />
         ) : null}
       </div>
     </dialog>

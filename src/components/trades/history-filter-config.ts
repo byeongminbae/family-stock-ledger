@@ -5,6 +5,7 @@ export const BASE_FILTER_KEYS = [
   "to",
   "q",
   "ownerId",
+  "brokerageCode",
   "quantityMin",
   "quantityMax",
   "unitPriceMin",
@@ -32,6 +33,7 @@ export const FILTER_LABELS: Readonly<Record<string, string>> = {
   to: "종료 일시",
   q: "종목",
   ownerId: "소유주",
+  brokerageCode: "증권사",
   quantityMin: "수량 최소",
   quantityMax: "수량 최대",
   unitPriceMin: "단가 최소",
@@ -44,3 +46,8 @@ export const FILTER_LABELS: Readonly<Record<string, string>> = {
 
 export const ownerFilterName = (value: string): string =>
   OWNERS.find((owner) => String(owner.id) === value)?.name ?? value;
+
+export const brokerageFilterName = (
+  brokerages: readonly { readonly code: string; readonly name: string }[],
+  value: string,
+): string => brokerages.find((brokerage) => brokerage.code === value)?.name ?? value;

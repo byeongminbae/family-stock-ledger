@@ -10,6 +10,10 @@ export const itemCodeSchema = z
   .string()
   .regex(/^[0-9A-Z]{6}$/, "국내 종목 코드는 영문 대문자와 숫자 6자리여야 합니다.");
 
+export const brokerageCodeSchema = z
+  .string()
+  .regex(/^\d{3}$/, "증권사 코드는 숫자 3자리여야 합니다.");
+
 export const nonNegativeIntegerTextSchema = z
   .string()
   .regex(/^(0|[1-9]\d*)$/, "0 이상 정수여야 합니다.");

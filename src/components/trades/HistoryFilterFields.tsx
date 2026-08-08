@@ -1,6 +1,8 @@
+import { useState } from "react";
 import type { Brokerage } from "@/lib/domain/brokerages";
 import { FILTER_RANGES, PROFIT_RANGE } from "./history-filter-config";
 import styles from "./history-filters.module.css";
+import { isIntegerDraft } from "./integer-input";
 import { OWNERS, sideLabel, type TradeSide } from "./types";
 
 interface RangeInputProps {
@@ -13,7 +15,18 @@ interface RangeInputProps {
   readonly signed?: boolean;
 }
 
-function RangeInput({ legend, min, max, unit, minValue, maxValue }: RangeInputProps) {
+function RangeInput({
+  legend,
+  min,
+  max,
+  unit,
+  minValue,
+  maxValue,
+  signed = false,
+}: RangeInputProps) {
+  const [minimumValue, setMinimumValue] = useState(minValue);
+  const [maximumValue, setMaximumValue] = useState(maxValue);
+
   return (
     <fieldset className={styles.range}>
       <legend>{legend}</legend>
@@ -24,8 +37,12 @@ function RangeInput({ legend, min, max, unit, minValue, maxValue }: RangeInputPr
           className="control"
           name={min}
           type="text"
-          defaultValue={minValue}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            if (isIntegerDraft(value, signed)) setMinimumValue(value);
+          }}
           placeholder={`최소 ${unit}`}
+          value={minimumValue}
         />
       </label>
       <span aria-hidden="true">-</span>
@@ -36,8 +53,12 @@ function RangeInput({ legend, min, max, unit, minValue, maxValue }: RangeInputPr
           className="control"
           name={max}
           type="text"
-          defaultValue={maxValue}
+          onChange={(event) => {
+            const value = event.currentTarget.value;
+            if (isIntegerDraft(value, signed)) setMaximumValue(value);
+          }}
           placeholder={`최대 ${unit}`}
+          value={maximumValue}
         />
       </label>
     </fieldset>

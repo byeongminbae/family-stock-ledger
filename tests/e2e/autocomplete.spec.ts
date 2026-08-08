@@ -11,23 +11,26 @@ const stockSearchResponse = {
   ],
 } as const;
 
-async function enterComposingKorean(locator: import("@playwright/test").Locator): Promise<void> {
+async function enterComposingText(
+  locator: import("@playwright/test").Locator,
+  value: string,
+): Promise<void> {
   await locator.dispatchEvent("compositionstart", { data: "" });
-  await locator.evaluate((element) => {
+  await locator.evaluate((element, composingValue) => {
     if (!(element instanceof HTMLInputElement)) {
-      throw new TypeError("종목 검색 입력을 찾지 못했습니다.");
+      throw new TypeError("텍스트 입력 필드를 찾지 못했습니다.");
     }
     const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
-    descriptor?.set?.call(element, "삼성");
+    descriptor?.set?.call(element, composingValue);
     element.dispatchEvent(
       new InputEvent("input", {
         bubbles: true,
-        data: "성",
+        data: composingValue,
         inputType: "insertCompositionText",
         isComposing: true,
       }),
     );
-  });
+  }, value);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -43,7 +46,7 @@ test.beforeEach(async ({ page }) => {
 
 test("한글을 조합하는 동안 검색하고 Enter가 폼을 제출하지 않는다", async ({ page }) => {
   const combobox = page.getByRole("combobox", { name: /종목명/ });
-  await enterComposingKorean(combobox);
+  await enterComposingText(combobox, "삼성");
 
   await expect(page.getByRole("option", { name: /삼성전자/ })).toBeVisible();
   await combobox.press("Enter");
@@ -55,7 +58,7 @@ test("한글을 조합하는 동안 검색하고 Enter가 폼을 제출하지 �
   await expect(page.getByText(/선택: 삼성전자/)).toBeVisible();
 });
 
-test("한글 종목 선택 뒤 거래 숫자 필드가 IME 입력 힌트를 바꾸지 않는다", async ({ page }) => {
+test("한글 종목 선택 뒤 거래 정수 필드는 비정수 입력을 무효화한다", async ({ page }) => {
   const combobox = page.getByRole("combobox", { name: /종목명/ });
   await combobox.fill("삼성");
   await page.getByRole("option", { name: /삼성전자/ }).click();
@@ -72,16 +75,25 @@ test("한글 종목 선택 뒤 거래 숫자 필드가 IME 입력 힌트를 바�
   await quantity.click();
   await expect(quantity).toBeFocused();
   await quantity.fill("10");
+  await enterComposingText(quantity, "10한글");
+  await expect(quantity).toHaveValue("10");
+  await expect(quantity).toBeFocused();
+  await quantity.dispatchEvent("compositionend", { data: "한글" });
+
   await unitPrice.click();
   await expect(unitPrice).toBeFocused();
   await unitPrice.fill("70000");
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.evaluate(() => navigator.clipboard.writeText("70000.5"));
+  await unitPrice.selectText();
+  await unitPrice.press("Control+V");
 
   await expect(quantity).toHaveValue("10");
   await expect(unitPrice).toHaveValue("70000");
   await expect(page.getByText("700,000원", { exact: true })).toBeVisible();
 });
 
-test("검색 범위 숫자 필드도 IME 입력 힌트 없이 기존 정수 검증을 유지한다", async ({ page }) => {
+test("검색 범위 정수 필드는 비정수 입력을 무효화하고 범위 검증을 유지한다", async ({ page }) => {
   const rangeInputs = page.locator('input[name$="Min"], input[name$="Max"]');
   await expect(rangeInputs).toHaveCount(6);
   const attributes = await rangeInputs.evaluateAll((elements) =>
@@ -96,13 +108,32 @@ test("검색 범위 숫자 필드도 IME 입력 힌트 없이 기존 정수 검�
     Array.from({ length: 6 }, () => ({ inputMode: null, min: null, step: null, type: "text" })),
   );
 
-  await page.locator('input[name="quantityMin"]').fill("한글");
+  const quantityMin = page.locator('input[name="quantityMin"]');
+  await quantityMin.fill("10");
+  await quantityMin.fill("10.5");
+  await expect(quantityMin).toHaveValue("10");
+
+  await page.locator('input[name="quantityMax"]').fill("5");
   await page.getByRole("button", { name: "검색 적용" }).click();
 
   await expect(
-    page.getByRole("alert").filter({ hasText: "수량 범위는 정수로 입력해 주세요." }),
-  ).toHaveText("수량 범위는 정수로 입력해 주세요.");
+    page.getByRole("alert").filter({ hasText: "수량 최솟값은 최댓값보다 클 수 없습니다." }),
+  ).toHaveText("수량 최솟값은 최댓값보다 클 수 없습니다.");
   await expect(page).toHaveURL(/\/buy-history$/);
+});
+
+test("손익 검색 범위는 음의 정수를 허용하고 소수 입력을 무효화한다", async ({ page }) => {
+  await page.goto("/sell-history");
+
+  const profitMin = page.locator('input[name="profitMin"]');
+  await profitMin.fill("-");
+  await expect(profitMin).toHaveValue("-");
+  await profitMin.fill("-12");
+  await profitMin.fill("-12.5");
+  await expect(profitMin).toHaveValue("-12");
+
+  await page.getByRole("button", { name: "검색 적용" }).click();
+  await expect(page).toHaveURL(/profitMin=-12/);
 });
 
 test("새 검색 응답을 기다리는 Enter는 보이는 첫 종목을 선택한다", async ({ page }) => {

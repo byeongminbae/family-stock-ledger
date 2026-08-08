@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import type { Brokerage } from "@/lib/domain/brokerages";
 
 import { formatInteger, formatWon } from "./format";
+import { isIntegerDraft } from "./integer-input";
 import { StockCombobox } from "./StockCombobox";
 import styles from "./trade-entry-form.module.css";
 import { OWNERS, sideLabel, type TradeSide } from "./types";
@@ -136,7 +137,10 @@ export function TradeEntryFields({
             className="control"
             disabled={form.submitting}
             id={id("quantity")}
-            onChange={(event) => form.setQuantity(event.target.value)}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (isIntegerDraft(value)) form.setQuantity(value);
+            }}
             type="text"
             value={form.quantity}
           />
@@ -156,7 +160,10 @@ export function TradeEntryFields({
             className="control"
             disabled={form.submitting}
             id={id("price")}
-            onChange={(event) => form.setUnitPrice(event.target.value)}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (isIntegerDraft(value)) form.setUnitPrice(value);
+            }}
             type="text"
             value={form.unitPrice}
           />

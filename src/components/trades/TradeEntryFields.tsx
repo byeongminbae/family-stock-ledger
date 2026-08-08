@@ -136,11 +136,8 @@ export function TradeEntryFields({
             className="control"
             disabled={form.submitting}
             id={id("quantity")}
-            inputMode="numeric"
-            min="1"
             onChange={(event) => form.setQuantity(event.target.value)}
-            step="1"
-            type="number"
+            type="text"
             value={form.quantity}
           />
           {fieldError("quantity") ? (
@@ -159,11 +156,8 @@ export function TradeEntryFields({
             className="control"
             disabled={form.submitting}
             id={id("price")}
-            inputMode="numeric"
-            min="1"
             onChange={(event) => form.setUnitPrice(event.target.value)}
-            step="1"
-            type="number"
+            type="text"
             value={form.unitPrice}
           />
           {fieldError("unitPrice") ? (

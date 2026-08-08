@@ -13,16 +13,7 @@ interface RangeInputProps {
   readonly signed?: boolean;
 }
 
-function RangeInput({
-  legend,
-  min,
-  max,
-  unit,
-  minValue,
-  maxValue,
-  signed = false,
-}: RangeInputProps) {
-  const mode = signed ? "text" : "numeric";
+function RangeInput({ legend, min, max, unit, minValue, maxValue }: RangeInputProps) {
   return (
     <fieldset className={styles.range}>
       <legend>{legend}</legend>
@@ -32,10 +23,7 @@ function RangeInput({
           id={`filter-${min}`}
           className="control"
           name={min}
-          type="number"
-          inputMode={mode}
-          min={signed ? undefined : "0"}
-          step="1"
+          type="text"
           defaultValue={minValue}
           placeholder={`최소 ${unit}`}
         />
@@ -47,10 +35,7 @@ function RangeInput({
           id={`filter-${max}`}
           className="control"
           name={max}
-          type="number"
-          inputMode={mode}
-          min={signed ? undefined : "0"}
-          step="1"
+          type="text"
           defaultValue={maxValue}
           placeholder={`최대 ${unit}`}
         />

@@ -55,6 +55,56 @@ test("한글을 조합하는 동안 검색하고 Enter가 폼을 제출하지 �
   await expect(page.getByText(/선택: 삼성전자/)).toBeVisible();
 });
 
+test("한글 종목 선택 뒤 거래 숫자 필드가 IME 입력 힌트를 바꾸지 않는다", async ({ page }) => {
+  const combobox = page.getByRole("combobox", { name: /종목명/ });
+  await combobox.fill("삼성");
+  await page.getByRole("option", { name: /삼성전자/ }).click();
+
+  const quantity = page.getByLabel("매수 수량 (필수)");
+  const unitPrice = page.getByLabel("매수 당시 단가 (필수)");
+  for (const field of [quantity, unitPrice]) {
+    await expect(field).toHaveAttribute("type", "text");
+    expect(await field.getAttribute("inputmode")).toBeNull();
+    expect(await field.getAttribute("min")).toBeNull();
+    expect(await field.getAttribute("step")).toBeNull();
+  }
+
+  await quantity.click();
+  await expect(quantity).toBeFocused();
+  await quantity.fill("10");
+  await unitPrice.click();
+  await expect(unitPrice).toBeFocused();
+  await unitPrice.fill("70000");
+
+  await expect(quantity).toHaveValue("10");
+  await expect(unitPrice).toHaveValue("70000");
+  await expect(page.getByText("700,000원", { exact: true })).toBeVisible();
+});
+
+test("검색 범위 숫자 필드도 IME 입력 힌트 없이 기존 정수 검증을 유지한다", async ({ page }) => {
+  const rangeInputs = page.locator('input[name$="Min"], input[name$="Max"]');
+  await expect(rangeInputs).toHaveCount(6);
+  const attributes = await rangeInputs.evaluateAll((elements) =>
+    elements.map((element) => ({
+      inputMode: element.getAttribute("inputmode"),
+      min: element.getAttribute("min"),
+      step: element.getAttribute("step"),
+      type: element.getAttribute("type"),
+    })),
+  );
+  expect(attributes).toEqual(
+    Array.from({ length: 6 }, () => ({ inputMode: null, min: null, step: null, type: "text" })),
+  );
+
+  await page.locator('input[name="quantityMin"]').fill("한글");
+  await page.getByRole("button", { name: "검색 적용" }).click();
+
+  await expect(
+    page.getByRole("alert").filter({ hasText: "수량 범위는 정수로 입력해 주세요." }),
+  ).toHaveText("수량 범위는 정수로 입력해 주세요.");
+  await expect(page).toHaveURL(/\/buy-history$/);
+});
+
 test("새 검색 응답을 기다리는 Enter는 보이는 첫 종목을 선택한다", async ({ page }) => {
   const combobox = page.getByRole("combobox", { name: /종목명/ });
   await combobox.fill("삼성");

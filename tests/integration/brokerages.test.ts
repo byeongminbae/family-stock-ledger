@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createDatabase } from "@/lib/db";
 import { listBrokerages } from "@/lib/domain/brokerages";
+import { getBaseDashboardPositions } from "@/lib/domain/dashboard";
 import { listTradeHistory } from "@/lib/domain/history";
 import { createTrade, updateTrade } from "@/lib/domain/trades";
 
@@ -140,6 +141,96 @@ describe("brokerage integration", () => {
 
     const history = await listTradeHistory("BUY", { q: "레거시 거래" }, database);
     expect(history.rows[0]).toMatchObject({ brokerageCode: null, brokerageName: null });
+  });
+
+  it("aggregates dashboard positions once per owner brokerage and stock", async () => {
+    // Given: repeated buys at one brokerage, the same stock at another, and another owner's holding.
+    await createTrade(
+      {
+        ...tradeCommon("BRK001", "증권사별 집계 하나"),
+        executedAt: day(1),
+        quantity: 1n,
+        side: "BUY",
+        unitPrice: 100n,
+      },
+      database,
+    );
+    await createTrade(
+      {
+        ...tradeCommon("BRK001", "증권사별 집계 하나"),
+        executedAt: day(2),
+        quantity: 1n,
+        side: "BUY",
+        unitPrice: 100n,
+      },
+      database,
+    );
+    await createTrade(
+      {
+        ...tradeCommon("BRK001", "증권사별 집계 하나"),
+        brokerageCode: "240",
+        executedAt: day(3),
+        quantity: 2n,
+        side: "BUY",
+        unitPrice: 100n,
+      },
+      database,
+    );
+    await createTrade(
+      {
+        ...tradeCommon("BRK002", "증권사별 집계 둘"),
+        executedAt: day(4),
+        quantity: 4n,
+        side: "BUY",
+        unitPrice: 100n,
+      },
+      database,
+    );
+    await createTrade(
+      {
+        ...tradeCommon("BRK002", "다른 소유주 집계"),
+        executedAt: day(5),
+        ownerId: 2,
+        quantity: 1n,
+        side: "BUY",
+        unitPrice: 10_000n,
+      },
+      database,
+    );
+
+    // When: dashboard positions are loaded from PostgreSQL.
+    const positions = (await getBaseDashboardPositions(database)).filter((position) =>
+      testCodes.some((itemCode) => itemCode === position.itemCode),
+    );
+
+    // Then: duplicate buys collapse inside a brokerage and each brokerage's weights total 100%.
+    const ownerPositions = positions.filter((position) => position.ownerId === 1);
+    expect(ownerPositions).toHaveLength(3);
+    expect(ownerPositions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          brokerageCode: "264",
+          itemCode: "BRK001",
+          quantity: "2",
+          portfolioWeightPercent: "33.333333333333333333",
+        }),
+        expect.objectContaining({
+          brokerageCode: "240",
+          itemCode: "BRK001",
+          quantity: "2",
+          portfolioWeightPercent: "100",
+        }),
+        expect.objectContaining({
+          brokerageCode: "264",
+          itemCode: "BRK002",
+          quantity: "4",
+          portfolioWeightPercent: "66.666666666666666667",
+        }),
+      ]),
+    );
+    expect(positions.find((position) => position.ownerId === 2)).toMatchObject({
+      portfolioWeightPercent: "100",
+    });
   });
 
   it("rejects a well-shaped brokerage code that is not in the reference table", async () => {

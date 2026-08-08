@@ -61,7 +61,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
           <OwnerSection
             key={ownerName}
             ownerName={ownerName}
-            positions={snapshot.positions.filter((position) => position.ownerName === ownerName)}
+            groups={snapshot.brokerageGroups[ownerName]}
             totals={snapshot.ownerTotals[ownerName]}
           />
         ))}

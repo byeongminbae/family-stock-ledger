@@ -9,6 +9,8 @@ const FinancialDecimal = Decimal.clone({ precision: 40, rounding: Decimal.ROUND_
 const aggregateRowSchema = z.object({
   ownerId: ownerIdSchema,
   ownerName: z.string(),
+  brokerageCode: z.string().nullable(),
+  brokerageName: z.string().nullable(),
   itemCode: z.string(),
   stockName: z.string(),
   boughtQuantity: financeTextSchema,
@@ -27,6 +29,8 @@ export interface MarketQuote {
 export interface DashboardPosition {
   readonly ownerId: DashboardAggregateRow["ownerId"];
   readonly ownerName: string;
+  readonly brokerageCode: string | null;
+  readonly brokerageName: string | null;
   readonly itemCode: string;
   readonly stockName: string;
   readonly quantity: string;
@@ -42,14 +46,11 @@ export interface DashboardPosition {
 
 export type DashboardOwnerTotals = Readonly<{
   stockCount: number;
-  heldQuantity: string;
-  averageBuyPrice: string | null;
   acquisitionAmount: string;
-  portfolioWeightPercent: string;
+  portfolioWeightPercent: string | null;
   currentPrice: null;
   valuationAmount: string | null;
   unrealizedProfit: string | null;
-  returnRatePercent: string | null;
 }>;
 
 function decimalText(value: Decimal): string {
@@ -70,28 +71,41 @@ export function summarizeDashboardRows(
     const acquisition = held.times(average);
     return { row, held, average, acquisition };
   });
-  const totalAcquisition = base.reduce(
-    (total, position) => total.plus(position.acquisition),
-    new FinancialDecimal(0),
-  );
+  const brokerageAcquisitions = new Map<
+    DashboardAggregateRow["ownerId"],
+    Map<string | null, Decimal>
+  >();
+  for (const position of base) {
+    const ownerBrokerages =
+      brokerageAcquisitions.get(position.row.ownerId) ?? new Map<string | null, Decimal>();
+    const current = ownerBrokerages.get(position.row.brokerageCode) ?? new FinancialDecimal(0);
+    ownerBrokerages.set(position.row.brokerageCode, current.plus(position.acquisition));
+    brokerageAcquisitions.set(position.row.ownerId, ownerBrokerages);
+  }
 
-  return base.map(({ row, held, average, acquisition }) => ({
-    ownerId: row.ownerId,
-    ownerName: row.ownerName,
-    itemCode: row.itemCode,
-    stockName: row.stockName,
-    quantity: decimalText(held),
-    averageBuyPrice: decimalText(average),
-    acquisitionAmount: decimalText(acquisition),
-    portfolioWeightPercent: totalAcquisition.isZero()
-      ? "0"
-      : decimalText(acquisition.dividedBy(totalAcquisition).times(100)),
-    currentPrice: null,
-    valuationAmount: null,
-    unrealizedProfit: null,
-    returnRatePercent: null,
-    quoteUpdatedAt: null,
-  }));
+  return base.map(({ row, held, average, acquisition }) => {
+    const brokerageAcquisition =
+      brokerageAcquisitions.get(row.ownerId)?.get(row.brokerageCode) ?? new FinancialDecimal(0);
+    return {
+      ownerId: row.ownerId,
+      ownerName: row.ownerName,
+      brokerageCode: row.brokerageCode,
+      brokerageName: row.brokerageName,
+      itemCode: row.itemCode,
+      stockName: row.stockName,
+      quantity: decimalText(held),
+      averageBuyPrice: decimalText(average),
+      acquisitionAmount: decimalText(acquisition),
+      portfolioWeightPercent: brokerageAcquisition.isZero()
+        ? "0"
+        : decimalText(acquisition.dividedBy(brokerageAcquisition).times(100)),
+      currentPrice: null,
+      valuationAmount: null,
+      unrealizedProfit: null,
+      returnRatePercent: null,
+      quoteUpdatedAt: null,
+    };
+  });
 }
 
 export function mergeMarketQuotes(
@@ -122,19 +136,12 @@ export function mergeMarketQuotes(
   });
 }
 
-export function summarizeOwnerTotals(
+function summarizePositionTotals(
   positions: readonly DashboardPosition[],
+  portfolioWeightPercent: string | null,
 ): DashboardOwnerTotals {
-  const heldQuantity = positions.reduce(
-    (total, position) => total.plus(position.quantity),
-    new FinancialDecimal(0),
-  );
   const acquisitionAmount = positions.reduce(
     (total, position) => total.plus(position.acquisitionAmount),
-    new FinancialDecimal(0),
-  );
-  const portfolioWeightPercent = positions.reduce(
-    (total, position) => total.plus(position.portfolioWeightPercent),
     new FinancialDecimal(0),
   );
   const quotesComplete =
@@ -157,24 +164,26 @@ export function summarizeOwnerTotals(
         new FinancialDecimal(0),
       )
     : null;
-  const returnRatePercent =
-    unrealizedProfit === null || acquisitionAmount.isZero()
-      ? null
-      : unrealizedProfit.dividedBy(acquisitionAmount).times(100);
-
   return {
     stockCount: positions.length,
-    heldQuantity: decimalText(heldQuantity),
-    averageBuyPrice: heldQuantity.isZero()
-      ? null
-      : decimalText(acquisitionAmount.dividedBy(heldQuantity)),
     acquisitionAmount: decimalText(acquisitionAmount),
-    portfolioWeightPercent: decimalText(portfolioWeightPercent),
+    portfolioWeightPercent,
     currentPrice: null,
     valuationAmount: valuationAmount === null ? null : decimalText(valuationAmount),
     unrealizedProfit: unrealizedProfit === null ? null : decimalText(unrealizedProfit),
-    returnRatePercent: returnRatePercent === null ? null : decimalText(returnRatePercent),
   };
+}
+
+export function summarizeBrokerageTotals(
+  positions: readonly DashboardPosition[],
+): DashboardOwnerTotals {
+  return summarizePositionTotals(positions, positions.length === 0 ? "0" : "100");
+}
+
+export function summarizeOwnerTotals(
+  positions: readonly DashboardPosition[],
+): DashboardOwnerTotals {
+  return summarizePositionTotals(positions, null);
 }
 
 export async function getBaseDashboardPositions(
@@ -184,6 +193,8 @@ export async function getBaseDashboardPositions(
     SELECT
       o.id AS "ownerId",
       o.name AS "ownerName",
+      b.code::text AS "brokerageCode",
+      b.name AS "brokerageName",
       s.item_code AS "itemCode",
       s.stock_name AS "stockName",
       SUM(t.quantity) FILTER (WHERE t.side = 'BUY')::text AS "boughtQuantity",
@@ -193,10 +204,11 @@ export async function getBaseDashboardPositions(
     FROM trades t
     JOIN owners o ON o.id = t.owner_id
     JOIN securities s ON s.id = t.security_id
-    GROUP BY o.id, o.name, s.item_code, s.stock_name
+    LEFT JOIN brokerages b ON b.id = t.brokerage_id
+    GROUP BY o.id, o.name, t.brokerage_id, b.code, b.name, s.item_code, s.stock_name
     HAVING
       SUM(CASE WHEN t.side = 'BUY' THEN t.quantity ELSE -t.quantity END) > 0
-    ORDER BY o.id, s.stock_name, s.item_code
+    ORDER BY o.id, b.name NULLS LAST, b.code NULLS LAST, s.stock_name, s.item_code
   `;
   return summarizeDashboardRows(z.array(aggregateRowSchema).parse(result));
 }

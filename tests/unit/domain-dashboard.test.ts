@@ -12,6 +12,8 @@ const rows: readonly DashboardAggregateRow[] = [
   {
     ownerId: 1,
     ownerName: "병민",
+    brokerageCode: "240",
+    brokerageName: "삼성증권",
     itemCode: "005930",
     stockName: "삼성전자",
     boughtQuantity: "7",
@@ -21,6 +23,8 @@ const rows: readonly DashboardAggregateRow[] = [
   {
     ownerId: 2,
     ownerName: "할머니",
+    brokerageCode: "264",
+    brokerageName: "키움증권",
     itemCode: "000660",
     stockName: "SK하이닉스",
     boughtQuantity: "2",
@@ -30,7 +34,7 @@ const rows: readonly DashboardAggregateRow[] = [
 ];
 
 describe("dashboard portfolio math", () => {
-  it("uses the lifetime buy average and global held cost basis", () => {
+  it("uses the lifetime buy average and owner held cost basis", () => {
     const positions = summarizeDashboardRows(rows);
 
     expect(positions).toMatchObject([
@@ -38,15 +42,76 @@ describe("dashboard portfolio math", () => {
         quantity: "5",
         averageBuyPrice: "100",
         acquisitionAmount: "500",
-        portfolioWeightPercent: "45.454545454545454545",
+        portfolioWeightPercent: "100",
+        brokerageCode: "240",
+        brokerageName: "삼성증권",
       },
       {
         quantity: "2",
         averageBuyPrice: "300",
         acquisitionAmount: "600",
-        portfolioWeightPercent: "54.545454545454545455",
+        portfolioWeightPercent: "100",
+        brokerageCode: "264",
+        brokerageName: "키움증권",
       },
     ]);
+  });
+
+  it("keeps brokerage positions separate while each brokerage totals one hundred percent", () => {
+    // Given: one owner holds the same stock at two brokerages and another stock at one brokerage.
+    const positions = summarizeDashboardRows([
+      {
+        ownerId: 1,
+        ownerName: "병민",
+        brokerageCode: "240",
+        brokerageName: "삼성증권",
+        itemCode: "005930",
+        stockName: "삼성전자",
+        boughtQuantity: "2",
+        soldQuantity: "0",
+        totalBuyAmount: "200",
+      },
+      {
+        ownerId: 1,
+        ownerName: "병민",
+        brokerageCode: "264",
+        brokerageName: "키움증권",
+        itemCode: "005930",
+        stockName: "삼성전자",
+        boughtQuantity: "2",
+        soldQuantity: "0",
+        totalBuyAmount: "200",
+      },
+      {
+        ownerId: 1,
+        ownerName: "병민",
+        brokerageCode: "264",
+        brokerageName: "키움증권",
+        itemCode: "000660",
+        stockName: "SK하이닉스",
+        boughtQuantity: "4",
+        soldQuantity: "0",
+        totalBuyAmount: "400",
+      },
+    ]);
+
+    // When: the weights are grouped by brokerage.
+    const samsungWeight = positions
+      .filter((position) => position.brokerageCode === "240")
+      .reduce((total, position) => total + Number(position.portfolioWeightPercent), 0);
+    const kiwoomWeight = positions
+      .filter((position) => position.brokerageCode === "264")
+      .reduce((total, position) => total + Number(position.portfolioWeightPercent), 0);
+
+    // Then: brokerage-stock rows stay distinct and each brokerage's weights total 100%.
+    expect(positions).toHaveLength(3);
+    expect(positions.map((position) => position.portfolioWeightPercent)).toEqual([
+      "100",
+      "33.333333333333333333",
+      "66.666666666666666667",
+    ]);
+    expect(samsungWeight).toBe(100);
+    expect(kiwoomWeight).toBe(100);
   });
 
   it("keeps quote-dependent values null when one quote is unavailable", () => {
@@ -75,12 +140,14 @@ describe("dashboard portfolio math", () => {
 });
 
 describe("owner dashboard totals", () => {
-  it("uses held cost basis for the weighted average and complete quote totals", () => {
+  it("sums meaningful owner totals when market quotes are complete", () => {
     // Given: one owner's held positions with complete market quotes.
     const positions: readonly DashboardPosition[] = [
       {
         ownerId: 1,
         ownerName: "병민",
+        brokerageCode: "240",
+        brokerageName: "삼성증권",
         itemCode: "005930",
         stockName: "삼성전자",
         quantity: "2",
@@ -96,6 +163,8 @@ describe("owner dashboard totals", () => {
       {
         ownerId: 1,
         ownerName: "병민",
+        brokerageCode: "264",
+        brokerageName: "키움증권",
         itemCode: "000660",
         stockName: "SK하이닉스",
         quantity: "1",
@@ -113,17 +182,14 @@ describe("owner dashboard totals", () => {
     // When: the owner subtotal is calculated.
     const totals = summarizeOwnerTotals(positions);
 
-    // Then: additive columns are summed and averages/rate stay portfolio-weighted.
+    // Then: additive money columns are summed and the owner weight is omitted.
     expect(totals).toStrictEqual({
       stockCount: 2,
-      heldQuantity: "3",
-      averageBuyPrice: "166.666666666666666667",
       acquisitionAmount: "500",
-      portfolioWeightPercent: "50",
+      portfolioWeightPercent: null,
       currentPrice: null,
       valuationAmount: "600",
       unrealizedProfit: "100",
-      returnRatePercent: "20",
     });
   });
 
@@ -133,6 +199,8 @@ describe("owner dashboard totals", () => {
       {
         ownerId: 1,
         ownerName: "병민",
+        brokerageCode: "240",
+        brokerageName: "삼성증권",
         itemCode: "005930",
         stockName: "삼성전자",
         quantity: "2",
@@ -148,6 +216,8 @@ describe("owner dashboard totals", () => {
       {
         ownerId: 1,
         ownerName: "병민",
+        brokerageCode: "264",
+        brokerageName: "키움증권",
         itemCode: "000660",
         stockName: "SK하이닉스",
         quantity: "1",
@@ -168,14 +238,14 @@ describe("owner dashboard totals", () => {
     // Then: only quote-independent values remain available.
     expect(totals).toMatchObject({
       stockCount: 2,
-      heldQuantity: "3",
-      averageBuyPrice: "166.666666666666666667",
       acquisitionAmount: "500",
-      portfolioWeightPercent: "50",
+      portfolioWeightPercent: null,
       currentPrice: null,
       valuationAmount: null,
       unrealizedProfit: null,
-      returnRatePercent: null,
     });
+    expect(totals).not.toHaveProperty("heldQuantity");
+    expect(totals).not.toHaveProperty("averageBuyPrice");
+    expect(totals).not.toHaveProperty("returnRatePercent");
   });
 });

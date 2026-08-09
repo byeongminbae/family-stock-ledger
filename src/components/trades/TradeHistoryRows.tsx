@@ -8,6 +8,15 @@ interface ProfitProps {
   readonly value: string | null;
 }
 
+type ProfitTone = "gain" | "loss";
+
+function profitTone(value: string | null): ProfitTone | undefined {
+  if (value === null) return undefined;
+  const sign = numericSign(value);
+  if (sign === 1) return "gain";
+  return sign === -1 ? "loss" : undefined;
+}
+
 function Profit({ value }: ProfitProps) {
   if (value === null) return <span className={styles.muted}>계산 불가</span>;
   const sign = numericSign(value);
@@ -15,8 +24,9 @@ function Profit({ value }: ProfitProps) {
   const negative = sign === -1;
   const zero = sign === 0;
   const visible = `${negative || zero ? "" : "+"}${formatWon(value)}`;
+  const toneClass = negative ? "negative" : zero ? "" : "positive";
   return (
-    <span className={negative ? "money negative" : "money positive"}>
+    <span className={`money${toneClass ? ` ${toneClass}` : ""}`}>
       <span className="sr-only">{negative ? "손실" : zero ? "손익 없음" : "이익"} </span>
       {visible}
     </span>
@@ -85,7 +95,10 @@ export function TradeHistoryTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id}>
+            <tr
+              data-profit-tone={side === "SELL" ? profitTone(row.profit) : undefined}
+              key={row.id}
+            >
               {selectionMode ? (
                 <td>
                   <SelectionCheckbox
@@ -142,7 +155,11 @@ export function TradeHistoryCards({
     <ul className={styles.cards}>
       {rows.map((row) => (
         <li key={row.id}>
-          <article className={styles.card} aria-labelledby={`trade-card-${row.id}`}>
+          <article
+            className={styles.card}
+            aria-labelledby={`trade-card-${row.id}`}
+            data-profit-tone={side === "SELL" ? profitTone(row.profit) : undefined}
+          >
             <header>
               <div>
                 <h3 id={`trade-card-${row.id}`}>{row.stockName}</h3>

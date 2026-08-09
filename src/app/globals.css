@@ -536,12 +536,12 @@ textarea.control {
 }
 
 .positive {
-  color: var(--color-positive);
+  color: var(--color-negative);
   font-weight: 700;
 }
 
 .negative {
-  color: var(--color-negative);
+  color: var(--color-brand);
   font-weight: 700;
 }
 

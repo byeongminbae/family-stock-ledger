@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import type { Brokerage } from "@/lib/domain/brokerages";
 
-import { formatInteger, formatWon } from "./format";
+import { formatInteger, formatWon, numericSign } from "./format";
 import { isIntegerDraft } from "./integer-input";
 import { StockCombobox } from "./StockCombobox";
 import styles from "./trade-entry-form.module.css";
@@ -30,6 +30,9 @@ export function TradeEntryFields({
   const label = sideLabel(side);
   const fieldError = (name: TradeFieldName) => form.errors[name];
   const id = (name: string) => `${formId}-${name}`;
+  const expectedProfitSign = form.expectedProfit === null ? null : numericSign(form.expectedProfit);
+  const expectedProfitClass =
+    expectedProfitSign === 1 ? "positive" : expectedProfitSign === -1 ? "negative" : "";
 
   return (
     <>
@@ -183,11 +186,7 @@ export function TradeEntryFields({
             {form.editing ? (
               <small>저장 시 거래 시각 순으로 이 매도와 이후 손익을 다시 계산합니다.</small>
             ) : (
-              <output
-                className={
-                  form.expectedProfit?.startsWith("-") ? "money negative" : "money positive"
-                }
-              >
+              <output className={`money${expectedProfitClass ? ` ${expectedProfitClass}` : ""}`}>
                 {form.averageUnavailable
                   ? "조회 실패"
                   : form.expectedProfit === null

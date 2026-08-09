@@ -194,6 +194,24 @@
   background: var(--color-surface);
 }
 
+.tableWrap tbody tr[data-profit-tone="gain"],
+.card[data-profit-tone="gain"] {
+  background: var(--color-negative-soft);
+}
+
+.tableWrap tbody tr[data-profit-tone="loss"],
+.card[data-profit-tone="loss"] {
+  background: var(--color-brand-soft);
+}
+
+.card[data-profit-tone="gain"] {
+  border-color: color-mix(in srgb, var(--color-negative) 24%, var(--color-line));
+}
+
+.card[data-profit-tone="loss"] {
+  border-color: color-mix(in srgb, var(--color-brand) 24%, var(--color-line));
+}
+
 .card header {
   display: flex;
   align-items: start;

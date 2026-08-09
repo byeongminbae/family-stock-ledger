@@ -140,6 +140,7 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
 
   await page.goto("/record");
   await selectStock(sellRegion, "삼성", "삼성전자");
+  await sellRegion.getByLabel("증권사 (필수)").selectOption("240");
   await sellRegion.getByLabel("매도 수량 (필수)").fill("99");
   await sellRegion.getByLabel("매도 당시 단가 (필수)").fill("90000");
   await sellRegion.getByRole("button", { name: "매도 기록 저장" }).click();

@@ -17,8 +17,13 @@ test.beforeEach(async ({ page }) => {
     });
   });
   await page.route("**/api/positions/average**", async (route) => {
+    const brokerageCode = new URL(route.request().url()).searchParams.get("brokerageCode");
+    const hasPosition = brokerageCode !== "264";
     await route.fulfill({
-      body: JSON.stringify({ averageBuyPrice: "70000", heldQuantity: "10" }),
+      body: JSON.stringify({
+        averageBuyPrice: hasPosition ? "70000" : null,
+        heldQuantity: hasPosition ? "10" : "0",
+      }),
       contentType: "application/json",
       status: 200,
     });
@@ -114,4 +119,30 @@ test("매도 수량 초안은 매수 저장 성공 후에도 독립적으로 유
   // Then: the buy succeeds and the sell draft is unchanged.
   await expect(buyForm.getByText("매수 기록이 저장되었습니다.")).toBeVisible();
   await expect(sellForm.getByLabel("매도 수량 (필수)")).toHaveValue("3");
+});
+
+test("매수하지 않은 증권사에서는 매도 저장을 막는다", async ({ page }) => {
+  // Given: the owner selects a stock at a brokerage where the position endpoint reports zero.
+  await page.goto("/record");
+  const sellForm = page.getByRole("region", { name: "매도 기록 추가" });
+  const combobox = sellForm.getByRole("combobox", { name: /종목명/ });
+  await combobox.fill("삼성");
+  await sellForm.getByRole("option", { name: /삼성전자/ }).click();
+  await sellForm.getByLabel("증권사 (필수)").selectOption("264");
+  await sellForm.getByLabel("매도 수량 (필수)").fill("1");
+  await sellForm.getByLabel("매도 당시 단가 (필수)").fill("70000");
+
+  // When: the brokerage-scoped position finishes loading and the form is submitted.
+  await expect(sellForm.getByText(/보유 0주 · 평균\s+-/)).toBeVisible();
+  let tradeRequestCount = 0;
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/api/trades")) {
+      tradeRequestCount += 1;
+    }
+  });
+  await sellForm.getByRole("button", { name: "매도 기록 저장" }).click();
+
+  // Then: the client reports the missing brokerage inventory without sending a trade.
+  await expect(sellForm.getByText("선택한 증권사에 보유 수량이 없습니다.")).toBeVisible();
+  expect(tradeRequestCount).toBe(0);
 });

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/domain/trades", () => ({
   createTrade: vi.fn(),
   deleteTrades: vi.fn(),
-  getPositionAverage: vi.fn(),
   updateTrade: vi.fn(),
   TradeDomainError: class TradeDomainError extends Error {
     readonly code: "INVALID_TRADE" | "INSUFFICIENT_HOLDING" | "TRADE_NOT_FOUND";

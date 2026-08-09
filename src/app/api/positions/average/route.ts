@@ -1,20 +1,30 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+
 import { getPositionAverage } from "@/lib/domain/trades";
+import { ownerIdSchema } from "@/lib/domain/types";
 
 const positionQuerySchema = z.object({
+  brokerageCode: z.string().regex(/^\d{3}$/),
   itemCode: z.string().regex(/^[0-9A-Z]{6}$/),
-  ownerId: z.coerce.number().int().min(1).max(3),
+  ownerId: z.preprocess(
+    (value) => (typeof value === "string" ? Number(value) : value),
+    ownerIdSchema,
+  ),
 });
 
 export async function GET(request: Request): Promise<NextResponse> {
   const searchParams = new URL(request.url).searchParams;
   const parsed = positionQuerySchema.safeParse({
+    brokerageCode: searchParams.get("brokerageCode"),
     itemCode: searchParams.get("itemCode"),
     ownerId: searchParams.get("ownerId"),
   });
   if (!parsed.success) {
-    return NextResponse.json({ message: "소유주와 종목코드를 확인해 주세요." }, { status: 400 });
+    return NextResponse.json(
+      { message: "소유주, 증권사, 종목코드를 확인해 주세요." },
+      { status: 400 },
+    );
   }
 
   try {

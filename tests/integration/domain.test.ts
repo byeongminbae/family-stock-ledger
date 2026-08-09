@@ -131,7 +131,7 @@ describe("trade ledger integration", () => {
     expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
     expect(outcomes.filter((outcome) => outcome.status === "rejected")).toHaveLength(1);
     await expect(
-      getPositionAverage({ ownerId: 2, itemCode: "TST002" }, database),
+      getPositionAverage({ brokerageCode: "264", ownerId: 2, itemCode: "TST002" }, database),
     ).resolves.toMatchObject({ heldQuantity: "3" });
   });
 
@@ -181,9 +181,9 @@ describe("trade ledger integration", () => {
       database,
     );
 
-    await expect(getPositionAverage({ ownerId: 3, itemCode: "TST003" }, database)).resolves.toEqual(
-      { heldQuantity: "15", averageBuyPrice: "233.3333333333333333" },
-    );
+    await expect(
+      getPositionAverage({ brokerageCode: "264", ownerId: 3, itemCode: "TST003" }, database),
+    ).resolves.toEqual({ heldQuantity: "15", averageBuyPrice: "233.3333333333333333" });
     const history = await listTradeHistory("SELL", { q: "평균단가" }, database);
     expect(history.rows).toHaveLength(1);
     expect(history.rows[0]).toMatchObject({ profit: "250" });
@@ -204,12 +204,12 @@ describe("trade ledger integration", () => {
       database,
     );
 
-    await expect(getPositionAverage({ ownerId: 1, itemCode: "TST006" }, database)).resolves.toEqual(
-      {
-        heldQuantity: "15",
-        averageBuyPrice: "150.0000000000000000",
-      },
-    );
+    await expect(
+      getPositionAverage({ brokerageCode: "264", ownerId: 1, itemCode: "TST006" }, database),
+    ).resolves.toEqual({
+      heldQuantity: "15",
+      averageBuyPrice: "150.0000000000000000",
+    });
     const history = await listTradeHistory("SELL", { q: "부분 매도" }, database);
     expect(history.rows[0]).toMatchObject({ profit: "750" });
   });
@@ -325,10 +325,10 @@ describe("trade ledger integration", () => {
     );
 
     await expect(
-      getPositionAverage({ ownerId: 1, itemCode: "TST008" }, database),
+      getPositionAverage({ brokerageCode: "264", ownerId: 1, itemCode: "TST008" }, database),
     ).resolves.toMatchObject({ heldQuantity: "10" });
     await expect(
-      getPositionAverage({ ownerId: 2, itemCode: "TST009" }, database),
+      getPositionAverage({ brokerageCode: "264", ownerId: 2, itemCode: "TST009" }, database),
     ).resolves.toMatchObject({ heldQuantity: "5" });
     const history = await listTradeHistory("SELL", { q: "새 원장" }, database);
     expect(history.rows[0]).toMatchObject({ ownerId: 2, itemCode: "TST009", profit: "500" });
@@ -404,7 +404,7 @@ describe("trade ledger integration", () => {
     ).rejects.toMatchObject({ code: "INSUFFICIENT_HOLDING" });
 
     await expect(
-      getPositionAverage({ ownerId: 3, itemCode: "TST006" }, database),
+      getPositionAverage({ brokerageCode: "264", ownerId: 3, itemCode: "TST006" }, database),
     ).resolves.toMatchObject({ heldQuantity: "2" });
     const history = await listTradeHistory("SELL", { q: "수정 롤백" }, database);
     expect(history.rows[0]).toMatchObject({ quantity: "3", profit: "300" });
@@ -447,9 +447,9 @@ describe("trade ledger integration", () => {
       deleteTrades({ ids: [BigInt(buy.id)], side: "BUY" }, database),
     ).rejects.toMatchObject({ code: "INSUFFICIENT_HOLDING" });
 
-    await expect(getPositionAverage({ ownerId: 1, itemCode: "TST004" }, database)).resolves.toEqual(
-      { heldQuantity: "3", averageBuyPrice: "100.0000000000000000" },
-    );
+    await expect(
+      getPositionAverage({ brokerageCode: "264", ownerId: 1, itemCode: "TST004" }, database),
+    ).resolves.toEqual({ heldQuantity: "3", averageBuyPrice: "100.0000000000000000" });
   });
 
   it("recomputes downstream sell profit after deleting an earlier buy", async () => {
@@ -509,9 +509,9 @@ describe("trade ledger integration", () => {
     await expect(
       deleteTrades({ ids: [BigInt(firstBuy.id), BigInt(secondBuy.id)], side: "BUY" }, database),
     ).resolves.toEqual({ deletedCount: 2 });
-    await expect(getPositionAverage({ ownerId: 2, itemCode: "TST005" }, database)).resolves.toEqual(
-      { heldQuantity: "0", averageBuyPrice: null },
-    );
+    await expect(
+      getPositionAverage({ brokerageCode: "264", ownerId: 2, itemCode: "TST005" }, database),
+    ).resolves.toEqual({ heldQuantity: "0", averageBuyPrice: null });
   });
 
   it("rejects an ID that does not belong to the requested side without deleting anything", async () => {
@@ -534,8 +534,8 @@ describe("trade ledger integration", () => {
     await expect(
       deleteTrades({ ids: [BigInt(trade.id)], side: "SELL" }, database),
     ).rejects.toMatchObject({ code: "TRADE_NOT_FOUND" });
-    await expect(getPositionAverage({ ownerId: 2, itemCode: "TST005" }, database)).resolves.toEqual(
-      { heldQuantity: "10", averageBuyPrice: "100.0000000000000000" },
-    );
+    await expect(
+      getPositionAverage({ brokerageCode: "264", ownerId: 2, itemCode: "TST005" }, database),
+    ).resolves.toEqual({ heldQuantity: "10", averageBuyPrice: "100.0000000000000000" });
   });
 });

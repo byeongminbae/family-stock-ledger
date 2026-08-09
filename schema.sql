@@ -84,9 +84,9 @@ CREATE TABLE trades (
 CREATE INDEX trades_history_index
     ON trades (side, executed_at DESC, id DESC);
 CREATE INDEX trades_position_timeline_index
-    ON trades (owner_id, security_id, executed_at, id);
+    ON trades (owner_id, security_id, brokerage_id, executed_at, id);
 CREATE INDEX trades_buy_average_index
-    ON trades (owner_id, security_id)
+    ON trades (owner_id, security_id, brokerage_id)
     WHERE side = 'BUY';
 CREATE INDEX trades_brokerage_id_index
     ON trades (brokerage_id);

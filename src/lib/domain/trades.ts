@@ -20,6 +20,7 @@ import {
   tradeSideSchema,
 } from "@/lib/domain/types";
 
+export { getPositionAverage } from "@/lib/domain/position-average";
 export type { TradeErrorCode };
 export { TradeDomainError };
 
@@ -40,17 +41,13 @@ const tradeIdResultSchema = z.array(z.object({ id: financeTextSchema }));
 const idResultSchema = z.array(z.object({ id: financeTextSchema }));
 const selectedTradeSchema = z.array(
   z.object({
+    brokerageId: financeTextSchema.nullable(),
     id: financeTextSchema,
     ownerId: ownerIdSchema,
     securityCode: itemCodeSchema,
-    securityId: financeTextSchema,
     executedAt: z.date(),
   }),
 );
-const averageResultSchema = z.array(
-  z.object({ heldQuantity: financeTextSchema, averageBuyPrice: financeTextSchema.nullable() }),
-);
-
 export type TradeInput = z.input<typeof tradeInputSchema>;
 export type UpdateTradeInput = z.input<typeof updateTradeInputSchema>;
 export type DeleteTradesInput = {
@@ -83,8 +80,11 @@ function parseUpdate(input: UpdateTradeInput): ParsedTrade & { readonly id: bigi
   return { ...parsed.data, executedAt: validExecutedAt(parsed.data.executedAt) };
 }
 
-function ledgerKey(trade: { readonly ownerId: 1 | 2 | 3; readonly itemCode: string }): LedgerKey {
-  return { ownerId: trade.ownerId, itemCode: trade.itemCode };
+function ledgerKey(
+  trade: { readonly ownerId: 1 | 2 | 3; readonly itemCode: string },
+  brokerageId: string | null,
+): LedgerKey {
+  return { brokerageId, ownerId: trade.ownerId, itemCode: trade.itemCode };
 }
 
 async function upsertSecurity(transaction: Transaction, trade: ParsedTrade): Promise<string> {
@@ -121,7 +121,7 @@ export async function createTrade(
   return database.begin(async (transaction) => {
     const brokerageId = await resolveBrokerageId(transaction, trade.brokerageCode);
     const securityId = await upsertSecurity(transaction, trade);
-    const key = ledgerKey(trade);
+    const key = ledgerKey(trade, brokerageId);
     await lockLedgers(transaction, [key]);
     const initialProfit = trade.side === "SELL" ? "0" : null;
     const result: unknown = await transaction`
@@ -155,8 +155,8 @@ export async function updateTrade(
     const securityId = await upsertSecurity(transaction, trade);
     await lockTradeIds(transaction, [id]);
     const selectedResult: unknown = await transaction`
-      SELECT t.id::text AS id, t.owner_id AS "ownerId", t.security_id::text AS "securityId",
-        s.item_code AS "securityCode", t.executed_at AS "executedAt"
+      SELECT t.brokerage_id::text AS "brokerageId", t.id::text AS id,
+        t.owner_id AS "ownerId", s.item_code AS "securityCode", t.executed_at AS "executedAt"
       FROM trades t
       JOIN securities s ON s.id = t.security_id
       WHERE t.id = ${id}::bigint AND t.side = ${trade.side}
@@ -165,8 +165,11 @@ export async function updateTrade(
     if (selected === undefined) {
       throw new TradeDomainError("TRADE_NOT_FOUND", "수정할 거래를 찾을 수 없습니다.");
     }
-    const oldKey = { ownerId: selected.ownerId, itemCode: selected.securityCode };
-    const newKey = ledgerKey(trade);
+    const oldKey = ledgerKey(
+      { ownerId: selected.ownerId, itemCode: selected.securityCode },
+      selected.brokerageId,
+    );
+    const newKey = ledgerKey(trade, brokerageId);
     const affected = earliestByLedger([
       { key: oldKey, executedAt: selected.executedAt },
       { key: newKey, executedAt: trade.executedAt },
@@ -176,8 +179,8 @@ export async function updateTrade(
       affected.map(({ key }) => key),
     );
     const lockedResult: unknown = await transaction`
-      SELECT t.id::text AS id, t.owner_id AS "ownerId", t.security_id::text AS "securityId",
-        s.item_code AS "securityCode", t.executed_at AS "executedAt"
+      SELECT t.brokerage_id::text AS "brokerageId", t.id::text AS id,
+        t.owner_id AS "ownerId", s.item_code AS "securityCode", t.executed_at AS "executedAt"
       FROM trades t
       JOIN securities s ON s.id = t.security_id
       WHERE t.id = ${id}::bigint AND t.side = ${trade.side} FOR UPDATE
@@ -208,8 +211,8 @@ export async function deleteTrades(
   return database.begin(async (transaction) => {
     await lockTradeIds(transaction, ids);
     const selectedResult: unknown = await transaction`
-      SELECT t.id::text AS id, t.owner_id AS "ownerId", t.security_id::text AS "securityId",
-        s.item_code AS "securityCode", t.executed_at AS "executedAt"
+      SELECT t.brokerage_id::text AS "brokerageId", t.id::text AS id,
+        t.owner_id AS "ownerId", s.item_code AS "securityCode", t.executed_at AS "executedAt"
       FROM trades t
       JOIN securities s ON s.id = t.security_id
       WHERE t.id IN ${transaction(ids)} AND t.side = ${input.side}
@@ -223,7 +226,7 @@ export async function deleteTrades(
     }
     const affected = earliestByLedger(
       selected.map((trade) => ({
-        key: { ownerId: trade.ownerId, itemCode: trade.securityCode },
+        key: ledgerKey({ ownerId: trade.ownerId, itemCode: trade.securityCode }, trade.brokerageId),
         executedAt: trade.executedAt,
       })),
     );
@@ -232,8 +235,8 @@ export async function deleteTrades(
       affected.map(({ key }) => key),
     );
     const lockedResult: unknown = await transaction`
-      SELECT t.id::text AS id, t.owner_id AS "ownerId", t.security_id::text AS "securityId",
-        s.item_code AS "securityCode", t.executed_at AS "executedAt"
+      SELECT t.brokerage_id::text AS "brokerageId", t.id::text AS id,
+        t.owner_id AS "ownerId", s.item_code AS "securityCode", t.executed_at AS "executedAt"
       FROM trades t
       JOIN securities s ON s.id = t.security_id
       WHERE t.id IN ${transaction(ids)} AND t.side = ${input.side} FOR UPDATE
@@ -254,29 +257,4 @@ export async function deleteTrades(
     }
     return { deletedCount: deleted.length };
   });
-}
-
-export async function getPositionAverage(
-  input: { readonly ownerId: number; readonly itemCode: string },
-  database: Database = db,
-): Promise<{ readonly heldQuantity: string; readonly averageBuyPrice: string | null }> {
-  const parsed = z.object({ ownerId: ownerIdSchema, itemCode: itemCodeSchema }).safeParse(input);
-  if (!parsed.success) {
-    throw new TradeDomainError("INVALID_TRADE", "소유주와 종목 코드를 확인해 주세요.");
-  }
-  const result: unknown = await database`
-    WITH position AS (
-      SELECT COALESCE(SUM(CASE WHEN side = 'BUY' THEN quantity ELSE -quantity END), 0) AS held,
-        COALESCE(SUM(quantity::numeric * unit_price) FILTER (WHERE side = 'BUY'), 0) -
-        COALESCE(SUM(quantity::numeric * unit_price - realized_profit) FILTER (WHERE side = 'SELL'), 0)
-          AS cost
-      FROM trades t
-      WHERE owner_id = ${parsed.data.ownerId}
-        AND security_id = (SELECT id FROM securities WHERE item_code = ${parsed.data.itemCode})
-    )
-    SELECT held::text AS "heldQuantity", (cost / NULLIF(held, 0))::text AS "averageBuyPrice"
-    FROM position
-  `;
-  const [position] = averageResultSchema.parse(result);
-  return position ?? { heldQuantity: "0", averageBuyPrice: null };
 }

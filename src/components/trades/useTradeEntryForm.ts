@@ -91,7 +91,7 @@ export function useTradeEntryForm({
   }, [editing]);
 
   useEffect(() => {
-    if (editing || side !== "SELL" || stock === null) {
+    if (editing || side !== "SELL" || brokerageCode === "" || stock === null) {
       setAverage(null);
       setAverageUnavailable(false);
       return;
@@ -101,7 +101,7 @@ export function useTradeEntryForm({
     setAverageUnavailable(false);
     void ky
       .get("/api/positions/average", {
-        searchParams: { ownerId, itemCode: stock.code },
+        searchParams: { ownerId, brokerageCode, itemCode: stock.code },
         signal: controller.signal,
         timeout: 8_000,
       })
@@ -111,7 +111,7 @@ export function useTradeEntryForm({
         if (!controller.signal.aborted) setAverageUnavailable(true);
       });
     return () => controller.abort();
-  }, [editing, ownerId, side, stock]);
+  }, [brokerageCode, editing, ownerId, side, stock]);
 
   const amount = multiplyIntegers(quantity, unitPrice);
   const expectedProfit =
@@ -149,6 +149,14 @@ export function useTradeEntryForm({
     }
     if (stock === null) nextErrors.stock = "검색 결과에서 종목을 선택해 주세요.";
     if (
+      !editing &&
+      side === "SELL" &&
+      average &&
+      /^\d+$/.test(quantity) &&
+      average.heldQuantity === "0"
+    ) {
+      nextErrors.quantity = "선택한 증권사에 보유 수량이\u00a0없습니다.";
+    } else if (
       !editing &&
       side === "SELL" &&
       average &&

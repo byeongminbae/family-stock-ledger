@@ -22,6 +22,7 @@ export class TradeDomainError extends Error {
 
 export type LedgerKey = {
   readonly ownerId: 1 | 2 | 3;
+  readonly brokerageId: string | null;
   readonly itemCode: string;
 };
 
@@ -43,7 +44,7 @@ type LedgerTrade = z.infer<typeof ledgerTradeSchema>;
 type ReplayUpdate = readonly [string, string];
 
 function ledgerLockKey(key: LedgerKey): string {
-  return `${key.ownerId}:${key.itemCode}`;
+  return JSON.stringify([key.ownerId, key.brokerageId, key.itemCode]);
 }
 
 export async function lockTradeIds(
@@ -90,6 +91,7 @@ export async function replayLedger(
     FROM trades t
     JOIN securities s ON s.id = t.security_id
     WHERE t.owner_id = ${key.ownerId} AND s.item_code = ${key.itemCode}
+      AND t.brokerage_id IS NOT DISTINCT FROM ${key.brokerageId}::bigint
       AND t.executed_at < ${updateFrom}
   `;
   const [seed] = replaySeedSchema.parse(seedResult);
@@ -103,6 +105,7 @@ export async function replayLedger(
     FROM trades t
     JOIN securities s ON s.id = t.security_id
     WHERE t.owner_id = ${key.ownerId} AND s.item_code = ${key.itemCode}
+      AND t.brokerage_id IS NOT DISTINCT FROM ${key.brokerageId}::bigint
       AND t.executed_at >= ${updateFrom}
     ORDER BY t.executed_at ASC, t.id ASC
   `;

@@ -25,10 +25,10 @@ export function useTradeDeletion({ rows, side }: UseTradeDeletionOptions) {
   const [confirming, setConfirming] = useState(false);
   const [status, setStatus] = useState<DeleteStatus>(null);
 
-  const selectedRowIds = useMemo(() => {
-    const selected = new Set(rows.map((row) => row.id));
-    return [...selectedIds].filter((id) => selected.has(id));
+  const selectedRows = useMemo(() => {
+    return rows.filter((row) => selectedIds.has(row.id));
   }, [rows, selectedIds]);
+  const selectedRowIds = useMemo(() => selectedRows.map((row) => row.id), [selectedRows]);
 
   const startSelection = () => {
     setStatus(null);
@@ -110,6 +110,7 @@ export function useTradeDeletion({ rows, side }: UseTradeDeletionOptions) {
     openConfirmation,
     selectedIds,
     selectedRowIds,
+    selectedRows,
     selectionMode,
     startSelection,
     status,

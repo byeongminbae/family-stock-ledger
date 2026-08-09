@@ -126,12 +126,11 @@ export function TradeHistory({
         side={side}
       />
       <TradeDeleteConfirmationDialog
-        count={deletion.selectedRowIds.length}
         deleting={deletion.deleting}
-        label={label}
         onCancel={deletion.cancelConfirmation}
         onConfirm={deletion.confirmDeletion}
         open={deletion.confirming}
+        rows={deletion.selectedRows}
         side={side}
       />
       <TradeEditDialog

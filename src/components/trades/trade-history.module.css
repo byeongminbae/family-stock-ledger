@@ -116,9 +116,11 @@
 }
 
 .confirmationDialog {
-  inline-size: min(calc(100% - var(--space-6)), calc(var(--space-8) * 9));
+  inline-size: min(calc(100% - var(--space-6)), calc(var(--space-8) * 14));
+  max-block-size: calc(100dvh - var(--space-6));
   margin: auto;
   padding: 0;
+  overflow: auto;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-panel);
   background: var(--color-surface);
@@ -164,6 +166,46 @@
 .editContent h3,
 .editContent p {
   margin: 0;
+}
+
+.confirmationList {
+  display: grid;
+  max-block-size: min(55dvh, calc(var(--space-8) * 9));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.confirmationItem {
+  padding: var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-surface-muted);
+}
+
+.confirmationItem dl {
+  display: grid;
+  grid-template-columns: 1.4fr repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.confirmationItem dl > div {
+  min-width: 0;
+}
+
+.confirmationItem dt {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.confirmationItem dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 700;
 }
 
 .confirmationActions {
@@ -314,6 +356,11 @@
 
   .confirmationContent {
     padding: var(--space-4);
+  }
+
+  .confirmationItem dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2);
   }
 
   .editContent {

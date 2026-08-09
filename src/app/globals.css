@@ -221,7 +221,7 @@ h3 {
 
 .app-nav {
   display: grid;
-  grid-template-columns: repeat(3, max-content);
+  grid-template-columns: repeat(4, max-content);
   align-items: stretch;
   gap: var(--space-1);
 }
@@ -777,7 +777,7 @@ textarea.control {
 
   .app-nav {
     width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .app-nav__link {

@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  HistoryFilters,
-  HistoryPagination,
-  TradeEntryForm,
-  TradeHistory,
-} from "@/components/trades";
+import { HistoryFilters, HistoryPagination, TradeHistory } from "@/components/trades";
 import { listBrokerages } from "@/lib/domain/brokerages";
 import { listTradeHistory } from "@/lib/domain/history";
 
 export const metadata: Metadata = {
   title: "매수 히스토리",
-  description: "가족별 국내 주식 매수 기록을 추가하고 모든 필드로 검색합니다.",
+  description: "가족별 국내 주식 매수 기록을 모든 필드로 검색합니다.",
 };
 
 export const dynamic = "force-dynamic";
@@ -59,11 +54,9 @@ export default async function BuyHistoryPage({ searchParams }: BuyHistoryPagePro
         <p className="page-eyebrow">거래 원장 · 매수</p>
         <h1 className="page-title">매수 히스토리</h1>
         <p className="page-description">
-          매수 기록을 남기고 거래일시, 종목, 수량, 단가, 매입액, 소유주별로 찾아보세요.
+          거래일시, 종목, 수량, 단가, 매입액, 소유주별로 찾아보세요.
         </p>
       </header>
-
-      <TradeEntryForm brokerages={brokerages} side="BUY" />
 
       <section className="history-section" aria-labelledby="buy-history-title">
         <div className="section-heading">

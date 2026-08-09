@@ -10,6 +10,7 @@ const evidenceDirectory = path.resolve(".omo/evidence/jusik-autocomplete-delete-
 
 const routes = [
   { name: "dashboard", path: "/" },
+  { name: "record", path: "/record" },
   { name: "buy-history", path: "/buy-history" },
   { name: "sell-history", path: "/sell-history" },
 ] as const;
@@ -27,19 +28,30 @@ async function waitForRouteReady(page: Page, route: (typeof routes)[number]): Pr
     return;
   }
 
-  const label = route.path === "/buy-history" ? "매수" : "매도";
-  await expect(page.getByRole("heading", { name: `${label} 기록 추가` })).toBeVisible();
+  if (route.path === "/record") {
+    await expect(page.getByRole("region", { name: "매수 기록 추가" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "매도 기록 추가" })).toBeVisible();
+    return;
+  }
+
   await expect(page.getByRole("button", { name: "검색 적용" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /기록 저장/ })).toHaveCount(0);
 }
 
-async function selectStock(page: Page, query: string, expectedName: string) {
-  const combobox = page.getByRole("combobox", { name: /종목명/ });
+function tradeRegion(page: Page, side: "매수" | "매도"): Locator {
+  return page.getByRole("region", { name: `${side} 기록 추가` });
+}
+
+async function selectStock(region: Locator, query: string, expectedName: string) {
+  const combobox = region.getByRole("combobox", { name: /종목명/ });
   await combobox.fill(query);
-  await expect(page.getByRole("option", { name: new RegExp(expectedName) }).first()).toBeVisible();
+  await expect(
+    region.getByRole("option", { name: new RegExp(expectedName) }).first(),
+  ).toBeVisible();
   await combobox.press("ArrowDown");
   await combobox.press("ArrowUp");
   await combobox.press("Enter");
-  await expect(page.getByText(new RegExp(`선택: ${expectedName}`))).toBeVisible();
+  await expect(region.getByText(new RegExp(`선택: ${expectedName}`))).toBeVisible();
 }
 
 async function capture(page: Page, name: string, fullPage = true) {
@@ -78,13 +90,14 @@ async function addTrade(
   price: string,
   owner: "병민" | "할머니" | "아빠" = "병민",
 ) {
-  await selectStock(page, stock.query, stock.name);
-  await page.getByLabel("증권사 (필수)").selectOption("240");
-  await page.getByLabel("소유주 (필수)").selectOption({ label: owner });
-  await page.getByLabel(`${side} 수량 (필수)`).fill(quantity);
-  await page.getByLabel(`${side} 당시 단가 (필수)`).fill(price);
-  await page.getByRole("button", { name: `${side} 기록 저장` }).click();
-  await expect(page.getByText(`${side} 기록이 저장되었습니다.`)).toBeVisible();
+  const region = tradeRegion(page, side);
+  await selectStock(region, stock.query, stock.name);
+  await region.getByLabel("증권사 (필수)").selectOption("240");
+  await region.getByLabel("소유주 (필수)").selectOption({ label: owner });
+  await region.getByLabel(`${side} 수량 (필수)`).fill(quantity);
+  await region.getByLabel(`${side} 당시 단가 (필수)`).fill(price);
+  await region.getByRole("button", { name: `${side} 기록 저장` }).click();
+  await expect(region.getByText(`${side} 기록이 저장되었습니다.`)).toBeVisible();
 }
 
 test("real journal flow and complete responsive capture set", async ({ page }) => {
@@ -98,35 +111,40 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
     await capture(page, `${route.name}-empty-1280.png`);
   }
 
-  await page.goto("/buy-history");
-  await page.getByRole("button", { name: "매수 기록 저장" }).click();
+  await page.goto("/record");
+  const buyRegion = tradeRegion(page, "매수");
+  await buyRegion.getByRole("button", { name: "매수 기록 저장" }).click();
   await expect(page.getByText("입력 내용을 확인해 주세요.")).toBeVisible();
-  await capture(page, "buy-history-validation-error-1280.png");
+  await capture(page, "record-validation-error-1280.png");
 
-  await page.goto("/buy-history");
-  await page.getByLabel("매수 일시 (필수)").fill("2026-08-07T10:30");
-  const stockSearch = page.getByRole("combobox", { name: /종목명/ });
+  await page.goto("/record");
+  await buyRegion.getByLabel("매수 일시 (필수)").fill("2026-08-07T10:30");
+  const stockSearch = buyRegion.getByRole("combobox", { name: /종목명/ });
   await stockSearch.fill("삼성");
-  await expect(page.getByRole("option", { name: /삼성전자/ }).first()).toBeVisible();
-  await capture(page, "stock-search-popover-1280.png");
+  await expect(buyRegion.getByRole("option", { name: /삼성전자/ }).first()).toBeVisible();
+  await capture(page, "record-stock-search-popover-1280.png");
   await stockSearch.fill("");
   await addTrade(page, "매수", { query: "삼성", name: "삼성전자" }, "10", "70000");
+  await capture(page, "record-buy-submission-success-1280.png");
+  await page.goto("/buy-history");
   await expect(page.getByRole("row", { name: /삼성전자.*삼성증권/ })).toBeVisible();
-  await capture(page, "buy-history-submission-success-1280.png");
+  await page.goto("/record");
   await addTrade(page, "매수", { query: "하이닉스", name: "SK하이닉스" }, "5", "100000");
   await addTrade(page, "매수", { query: "삼성", name: "삼성전자" }, "3", "80000", "할머니");
 
-  await page.goto("/sell-history");
-  await page.getByLabel("매도 일시 (필수)").fill("2026-08-07T11:00");
+  const sellRegion = tradeRegion(page, "매도");
+  await sellRegion.getByLabel("매도 일시 (필수)").fill("2026-08-07T11:00");
   await addTrade(page, "매도", { query: "삼성", name: "삼성전자" }, "2", "90000");
+  await page.goto("/sell-history");
   await expect(page.getByText(/이익 \+40,000원/).first()).toBeVisible();
 
-  await selectStock(page, "삼성", "삼성전자");
-  await page.getByLabel("매도 수량 (필수)").fill("99");
-  await page.getByLabel("매도 당시 단가 (필수)").fill("90000");
-  await page.getByRole("button", { name: "매도 기록 저장" }).click();
-  await expect(page.getByText(/보유 수량 8주를 초과할 수 없습니다/)).toBeVisible();
-  await capture(page, "sell-history-oversell-error-1280.png");
+  await page.goto("/record");
+  await selectStock(sellRegion, "삼성", "삼성전자");
+  await sellRegion.getByLabel("매도 수량 (필수)").fill("99");
+  await sellRegion.getByLabel("매도 당시 단가 (필수)").fill("90000");
+  await sellRegion.getByRole("button", { name: "매도 기록 저장" }).click();
+  await expect(sellRegion.getByText(/보유 수량 8주를 초과할 수 없습니다/)).toBeVisible();
+  await capture(page, "record-sell-oversell-error-1280.png");
 
   await page.goto("/buy-history");
   await page.getByLabel("증권사", { exact: true }).selectOption("240");

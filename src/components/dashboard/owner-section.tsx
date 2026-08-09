@@ -121,7 +121,7 @@ export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
       {positionCount === 0 ? (
         <div className={styles.ownerEmpty}>
           <p>현재 보유 중인 종목이 없습니다.</p>
-          <Link className="button button--secondary" href="/buy-history">
+          <Link className="button button--secondary" href="/record">
             매수 기록 추가
           </Link>
         </div>

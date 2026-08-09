@@ -16,12 +16,12 @@ const stockSearchResponse = {
 } as const;
 const createdTradeIds: Record<"BUY" | "SELL", string[]> = { BUY: [], SELL: [] };
 
-async function selectStock(page: Page, name: string): Promise<void> {
-  const combobox = page.getByRole("combobox", { name: /종목명/ });
+async function selectStock(form: Locator, name: string): Promise<void> {
+  const combobox = form.getByRole("combobox", { name: /종목명/ });
   await combobox.fill(name.slice(0, 2));
-  await expect(page.getByRole("option", { name: new RegExp(name) }).first()).toBeVisible();
+  await expect(form.getByRole("option", { name: new RegExp(name) }).first()).toBeVisible();
   await combobox.press("Enter");
-  await expect(page.getByText(new RegExp(`선택: ${name}`))).toBeVisible();
+  await expect(form.getByText(new RegExp(`선택: ${name}`))).toBeVisible();
 }
 
 async function addTrade(
@@ -31,18 +31,17 @@ async function addTrade(
   quantity: string,
   unitPrice: string,
 ): Promise<void> {
-  const historyRows = page.locator("table tbody tr");
-  const previousRowCount = await historyRows.count();
-  await page.getByLabel(`${side} 일시 (필수)`).fill(executedAt);
-  await selectStock(page, "삼성전자");
-  await page.getByLabel("증권사 (필수)").selectOption("240");
-  await page.getByLabel(`${side} 수량 (필수)`).fill(quantity);
-  await page.getByLabel(`${side} 당시 단가 (필수)`).fill(unitPrice);
+  const form = page.getByRole("region", { name: `${side} 기록 추가` });
+  await form.getByLabel(`${side} 일시 (필수)`).fill(executedAt);
+  await selectStock(form, "삼성전자");
+  await form.getByLabel("증권사 (필수)").selectOption("240");
+  await form.getByLabel(`${side} 수량 (필수)`).fill(quantity);
+  await form.getByLabel(`${side} 당시 단가 (필수)`).fill(unitPrice);
   const responsePromise = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" && new URL(response.url()).pathname === "/api/trades",
   );
-  await page.getByRole("button", { name: `${side} 기록 저장` }).click();
+  await form.getByRole("button", { name: `${side} 기록 저장` }).click();
   const payload: unknown = await (await responsePromise).json();
   if (
     typeof payload !== "object" ||
@@ -53,9 +52,7 @@ async function addTrade(
     throw new Error("생성된 거래 ID를 읽을 수 없습니다.");
   }
   createdTradeIds[side === "매수" ? "BUY" : "SELL"].push(payload.id);
-  await expect(page.getByText(`${side} 기록이 저장되었습니다.`)).toBeVisible();
-  await expect(historyRows).toHaveCount(previousRowCount + 1);
-  await expect(page.getByRole("row", { name: /삼성전자.*삼성증권/ }).first()).toBeVisible();
+  await expect(form.getByText(`${side} 기록이 저장되었습니다.`)).toBeVisible();
 }
 
 async function screenshot(page: Page, name: string, fullPage = true): Promise<void> {
@@ -103,12 +100,12 @@ test("creates chronological trades then edits buy and sell through the accessibl
   await mkdir(evidenceDirectory, { recursive: true });
   await page.setViewportSize({ width: 1280, height: 900 });
 
-  await page.goto("/buy-history");
+  await page.goto("/record");
   await addTrade(page, "매수", "2026-08-07T09:00", "100", "7000");
   await addTrade(page, "매수", "2026-08-07T10:00", "100", "8000");
+  await addTrade(page, "매도", "2026-08-07T11:00", "50", "9000");
 
   await page.goto("/sell-history");
-  await addTrade(page, "매도", "2026-08-07T11:00", "50", "9000");
   await expect(page.getByText(/이익 \+75,000원/).first()).toBeVisible();
 
   await page.goto("/buy-history");

@@ -32,7 +32,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
             가족별 보유 수량과 매입 원가, 오늘의 평가 결과를 한눈에 비교합니다.
           </p>
         </div>
-        <Link className="button button--primary" href="/buy-history">
+        <Link className="button button--primary" href="/record">
           매수 기록 추가
         </Link>
       </header>
@@ -50,7 +50,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
             <h2>아직 기록된 보유 종목이 없습니다</h2>
             <p>첫 매수 기록을 남기면 이곳에서 가족별 현황을 볼 수 있습니다.</p>
           </div>
-          <Link className="button button--primary" href="/buy-history">
+          <Link className="button button--primary" href="/record">
             첫 매수 기록 추가
           </Link>
         </aside>

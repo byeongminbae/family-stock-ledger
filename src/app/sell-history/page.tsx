@@ -1,12 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import {
-  HistoryFilters,
-  HistoryPagination,
-  TradeEntryForm,
-  TradeHistory,
-} from "@/components/trades";
+import { HistoryFilters, HistoryPagination, TradeHistory } from "@/components/trades";
 import { listBrokerages } from "@/lib/domain/brokerages";
 import { listTradeHistory } from "@/lib/domain/history";
 
@@ -64,8 +59,6 @@ export default async function SellHistoryPage({ searchParams }: SellHistoryPageP
           매도 시점까지의 평균단가로 확정된 손익을 확인하고 모든 필드로 찾아보세요.
         </p>
       </header>
-
-      <TradeEntryForm brokerages={brokerages} side="SELL" />
 
       <section className="history-section" aria-labelledby="sell-history-title">
         <div className="section-heading">

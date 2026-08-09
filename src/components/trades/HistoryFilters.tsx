@@ -8,29 +8,46 @@ import {
   BASE_FILTER_KEYS,
   brokerageFilterName,
   FILTER_LABELS,
-  FILTER_RANGES,
   ownerFilterName,
-  PROFIT_RANGE,
 } from "./history-filter-config";
 import styles from "./history-filters.module.css";
-import type { TradeSide } from "./types";
+import type { StockSelection, TradeSide } from "./types";
 
 interface HistoryFiltersProps {
   readonly brokerages: readonly Brokerage[];
+  readonly stocks: readonly StockSelection[];
   readonly side: TradeSide;
 }
 
-export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
+interface ActiveFilter {
+  readonly key: string;
+  readonly value: string;
+}
+
+export function HistoryFilters({ brokerages, stocks, side }: HistoryFiltersProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const keys = side === "SELL" ? [...BASE_FILTER_KEYS, "profitMin", "profitMax"] : BASE_FILTER_KEYS;
-  const active = keys.flatMap((key) => {
+  const active: ActiveFilter[] = [];
+  for (const key of BASE_FILTER_KEYS) {
+    if (key === "from" || key === "to") continue;
     const value = searchParams.get(key);
-    return value ? [{ key, value }] : [];
-  });
+    if (value) active.push({ key, value });
+  }
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  const period =
+    from || to
+      ? [
+          {
+            key: "period",
+            value: `${from ?? "시작일"} ~ ${to ?? "종료일"}`,
+          },
+        ]
+      : [];
+  const activeFilters: readonly ActiveFilter[] = [...period, ...active];
 
   const navigate = (params: URLSearchParams) => {
     const query = params.toString();
@@ -40,31 +57,14 @@ export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const next = new URLSearchParams(searchParams.toString());
-    const validationGroups = [...FILTER_RANGES, ...(side === "SELL" ? [PROFIT_RANGE] : [])];
-    for (const group of validationGroups) {
-      const minimum = String(data.get(group.min) ?? "").trim();
-      const maximum = String(data.get(group.max) ?? "").trim();
-      const integerPattern = group.signed ? /^-?\d+$/ : /^\d+$/;
-      if (
-        (minimum && !integerPattern.test(minimum)) ||
-        (maximum && !integerPattern.test(maximum))
-      ) {
-        setError(`${group.legend} 범위는 정수로 입력해 주세요.`);
-        return;
-      }
-      if (minimum && maximum && BigInt(minimum) > BigInt(maximum)) {
-        setError(`${group.legend} 최솟값은 최댓값보다 클 수 없습니다.`);
-        return;
-      }
-    }
-    const from = String(data.get("from") ?? "");
-    const to = String(data.get("to") ?? "");
-    if (from && to && from > to) {
-      setError("시작 일시는 종료 일시보다 늦을 수 없습니다.");
+    const next = new URLSearchParams();
+    const nextFrom = String(data.get("from") ?? "");
+    const nextTo = String(data.get("to") ?? "");
+    if (nextFrom && nextTo && nextFrom > nextTo) {
+      setError("시작일은 종료일보다 늦을 수 없습니다.");
       return;
     }
-    for (const key of keys) {
+    for (const key of BASE_FILTER_KEYS) {
       const value = String(data.get(key) ?? "").trim();
       if (value) next.set(key, value);
       else next.delete(key);
@@ -76,15 +76,18 @@ export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
 
   const removeFilter = (key: string) => {
     const next = new URLSearchParams(searchParams.toString());
-    next.delete(key);
+    if (key === "period") {
+      next.delete("from");
+      next.delete("to");
+    } else {
+      next.delete(key);
+    }
     next.delete("page");
     navigate(next);
   };
 
   const clearAll = () => {
-    const next = new URLSearchParams(searchParams.toString());
-    for (const key of keys) next.delete(key);
-    next.delete("page");
+    const next = new URLSearchParams();
     setError("");
     navigate(next);
   };
@@ -92,7 +95,7 @@ export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
   return (
     <details className={`panel ${styles.filters}`} open>
       <summary>
-        필터 <span className={styles.count}>{active.length}개 적용</span>
+        필터 <span className={styles.count}>{activeFilters.length}개 적용</span>
       </summary>
       <form
         key={searchParams.toString()}
@@ -102,7 +105,7 @@ export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
       >
         <HistoryFilterFields
           brokerages={brokerages}
-          side={side}
+          stocks={stocks}
           value={(key) => searchParams.get(key) ?? ""}
         />
         <div className={styles.actions}>
@@ -110,7 +113,7 @@ export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
             className="button button--secondary"
             type="button"
             onClick={clearAll}
-            disabled={isPending || active.length === 0}
+            disabled={isPending || activeFilters.length === 0}
           >
             전체 초기화
           </button>
@@ -124,22 +127,24 @@ export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
           {error}
         </p>
       ) : null}
-      {active.length > 0 ? (
+      {activeFilters.length > 0 ? (
         <fieldset className={styles.chips}>
           <legend className="sr-only">적용된 필터</legend>
-          {active.map(({ key, value }) => (
+          {activeFilters.map(({ key, value }) => (
             <button
               key={key}
               className={styles.chip}
               type="button"
               onClick={() => removeFilter(key)}
             >
-              {FILTER_LABELS[key]}:{" "}
+              {key === "period" ? "기간" : FILTER_LABELS[key]}:{" "}
               {key === "ownerId"
                 ? ownerFilterName(value)
                 : key === "brokerageCode"
                   ? brokerageFilterName(brokerages, value)
-                  : value}{" "}
+                  : key === "q"
+                    ? (stocks.find((stock) => stock.code === value)?.name ?? value)
+                    : value}{" "}
               <span aria-hidden="true">×</span>
               <span className="sr-only"> 필터 제거</span>
             </button>
@@ -147,7 +152,7 @@ export function HistoryFilters({ brokerages, side }: HistoryFiltersProps) {
         </fieldset>
       ) : null}
       <p className="sr-only" role="status" aria-live="polite">
-        {isPending ? "검색 결과 갱신 중" : ""}
+        {isPending ? `${side === "BUY" ? "매수" : "매도"} 검색 결과 갱신 중` : ""}
       </p>
     </details>
   );

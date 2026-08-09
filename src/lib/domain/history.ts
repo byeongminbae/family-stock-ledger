@@ -8,7 +8,12 @@ import {
   type RawSearchParams,
 } from "@/lib/domain/history-filters";
 import { historyBoundary } from "@/lib/domain/time";
-import { financeTextSchema, ownerIdSchema, type TradeSide } from "@/lib/domain/types";
+import {
+  financeTextSchema,
+  itemCodeSchema,
+  ownerIdSchema,
+  type TradeSide,
+} from "@/lib/domain/types";
 
 export type { HistoryFilters, RawSearchParams } from "@/lib/domain/history-filters";
 export { parseTradeFilters } from "@/lib/domain/history-filters";
@@ -32,6 +37,12 @@ const rowSchema = z.object({
   market: z.string(),
   isEtf: z.boolean(),
   profit: financeTextSchema.nullable(),
+});
+const purchasedStockSchema = z.object({
+  code: itemCodeSchema,
+  name: z.string().min(1),
+  market: z.string().min(1),
+  isEtf: z.boolean(),
 });
 
 export interface TradeHistoryRow {
@@ -62,6 +73,13 @@ export interface TradeHistoryResult {
   readonly hasFilters: boolean;
 }
 
+export interface PurchasedStock {
+  readonly code: string;
+  readonly name: string;
+  readonly market: string;
+  readonly isEtf: boolean;
+}
+
 function safeCount(value: string): number {
   const count = Number(value);
   if (!Number.isSafeInteger(count) || count < 0) {
@@ -84,12 +102,8 @@ export async function listTradeHistory(
         t.owner_id,
         b.code AS brokerage_code,
         t.executed_at,
-        t.quantity::numeric AS quantity,
-        t.unit_price::numeric AS unit_price,
-        t.quantity::numeric * t.unit_price::numeric AS amount,
         s.item_code,
-        s.stock_name,
-        t.realized_profit AS profit
+        s.stock_name
       FROM trades t
       JOIN securities s ON s.id = t.security_id
       LEFT JOIN brokerages b ON b.id = t.brokerage_id
@@ -103,21 +117,9 @@ export async function listTradeHistory(
           position(upper(${filters.q}) in upper(item_code)) > 0) AND
         (${fromInstant}::timestamptz IS NULL OR executed_at >= ${fromInstant}) AND
         (${toInstant}::timestamptz IS NULL OR executed_at < ${toInstant}) AND
-        (${filters.stockName}::text IS NULL OR
-          position(lower(${filters.stockName}) in lower(stock_name)) > 0) AND
-        (${filters.itemCode}::text IS NULL OR
-          position(upper(${filters.itemCode}) in upper(item_code)) > 0) AND
         (${filters.ownerId}::smallint IS NULL OR owner_id = ${filters.ownerId}) AND
         (${filters.brokerageCode}::char(3) IS NULL OR
-          brokerage_code = ${filters.brokerageCode}) AND
-        (${filters.quantityMin}::numeric IS NULL OR quantity >= ${filters.quantityMin}) AND
-        (${filters.quantityMax}::numeric IS NULL OR quantity <= ${filters.quantityMax}) AND
-        (${filters.unitPriceMin}::numeric IS NULL OR unit_price >= ${filters.unitPriceMin}) AND
-        (${filters.unitPriceMax}::numeric IS NULL OR unit_price <= ${filters.unitPriceMax}) AND
-        (${filters.amountMin}::numeric IS NULL OR amount >= ${filters.amountMin}) AND
-        (${filters.amountMax}::numeric IS NULL OR amount <= ${filters.amountMax}) AND
-        (${filters.profitMin}::numeric IS NULL OR profit >= ${filters.profitMin}) AND
-        (${filters.profitMax}::numeric IS NULL OR profit <= ${filters.profitMax})
+          brokerage_code = ${filters.brokerageCode})
       )::text AS filtered
     FROM base
   `;
@@ -159,21 +161,9 @@ export async function listTradeHistory(
         position(upper(${filters.q}) in upper(item_code)) > 0) AND
       (${fromInstant}::timestamptz IS NULL OR executed_at >= ${fromInstant}) AND
       (${toInstant}::timestamptz IS NULL OR executed_at < ${toInstant}) AND
-      (${filters.stockName}::text IS NULL OR
-        position(lower(${filters.stockName}) in lower(stock_name)) > 0) AND
-      (${filters.itemCode}::text IS NULL OR
-        position(upper(${filters.itemCode}) in upper(item_code)) > 0) AND
       (${filters.ownerId}::smallint IS NULL OR owner_id = ${filters.ownerId}) AND
       (${filters.brokerageCode}::char(3) IS NULL OR
-        brokerage_code = ${filters.brokerageCode}) AND
-      (${filters.quantityMin}::numeric IS NULL OR quantity >= ${filters.quantityMin}) AND
-      (${filters.quantityMax}::numeric IS NULL OR quantity <= ${filters.quantityMax}) AND
-      (${filters.unitPriceMin}::numeric IS NULL OR unit_price >= ${filters.unitPriceMin}) AND
-      (${filters.unitPriceMax}::numeric IS NULL OR unit_price <= ${filters.unitPriceMax}) AND
-      (${filters.amountMin}::numeric IS NULL OR amount >= ${filters.amountMin}) AND
-      (${filters.amountMax}::numeric IS NULL OR amount <= ${filters.amountMax}) AND
-      (${filters.profitMin}::numeric IS NULL OR profit >= ${filters.profitMin}) AND
-      (${filters.profitMax}::numeric IS NULL OR profit <= ${filters.profitMax})
+        brokerage_code = ${filters.brokerageCode})
     ORDER BY executed_at DESC, id DESC
     LIMIT ${pageSize} OFFSET ${offset}
   `;
@@ -195,4 +185,25 @@ export async function listTradeHistory(
     filters,
     hasFilters: filtersAreActive(filters),
   };
+}
+
+export async function listPurchasedStocks(
+  database: Database = db,
+): Promise<readonly PurchasedStock[]> {
+  const result: unknown = await database`
+    SELECT
+      s.item_code AS code,
+      s.stock_name AS name,
+      s.market,
+      s.is_etf AS "isEtf"
+    FROM securities s
+    WHERE EXISTS (
+      SELECT 1
+      FROM trades t
+      WHERE t.security_id = s.id AND t.side = 'BUY'
+    )
+    ORDER BY s.stock_name ASC, s.item_code ASC
+  `;
+
+  return purchasedStockSchema.array().parse(result);
 }

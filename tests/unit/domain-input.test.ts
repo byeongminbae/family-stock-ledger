@@ -20,44 +20,49 @@ describe("KST datetime-local conversion", () => {
 });
 
 describe("history filters", () => {
-  it("preserves exact integer finance filters as strings", () => {
+  it("keeps date, text, ownership, brokerage, and page filters", () => {
     const filters = parseTradeFilters({
+      from: "2026-08-01",
+      to: "2026-08-09",
+      q: "삼성전자",
       ownerId: "2",
-      quantityMin: "9007199254740993",
-      amountMax: "999999999999999999999",
+      brokerageCode: "264",
       page: "3",
     });
 
-    expect(filters).toMatchObject({
+    expect(filters).toEqual({
+      from: "2026-08-01",
+      to: "2026-08-09",
+      q: "삼성전자",
       ownerId: 2,
-      quantityMin: "9007199254740993",
-      amountMax: "999999999999999999999",
+      brokerageCode: "264",
       page: 3,
     });
   });
 
-  it("drops invalid ranges instead of interpolating unsafe SQL values", () => {
+  it("ignores removed numeric and separate stock search parameters", () => {
     const filters = parseTradeFilters({
+      q: "삼성전자",
+      stockName: "무시되어야 하는 종목명",
+      itemCode: "999999",
       quantityMin: "1 OR 1=1",
-      unitPriceMax: "-1",
-      ownerId: "9",
-    });
-
-    expect(filters.quantityMin).toBeNull();
-    expect(filters.unitPriceMax).toBeNull();
-    expect(filters.ownerId).toBeNull();
-  });
-
-  it("accepts negative realized-profit bounds only for profit filters", () => {
-    const filters = parseTradeFilters({
+      quantityMax: "9007199254740993",
+      unitPriceMin: "1",
+      unitPriceMax: "999999",
+      amountMin: "1",
+      amountMax: "999999999999999999999",
       profitMin: "-500",
-      profitMax: "-1",
-      amountMin: "-500",
+      profitMax: "500",
     });
 
-    expect(filters.profitMin).toBe("-500");
-    expect(filters.profitMax).toBe("-1");
-    expect(filters.amountMin).toBeNull();
+    expect(filters).toEqual({
+      from: null,
+      to: null,
+      q: "삼성전자",
+      ownerId: null,
+      brokerageCode: null,
+      page: 1,
+    });
   });
 
   it("accepts only a three-digit brokerage code", () => {

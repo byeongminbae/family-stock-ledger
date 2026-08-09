@@ -3,11 +3,11 @@ import { Suspense } from "react";
 
 import { HistoryFilters, HistoryPagination, TradeHistory } from "@/components/trades";
 import { listBrokerages } from "@/lib/domain/brokerages";
-import { listTradeHistory } from "@/lib/domain/history";
+import { listPurchasedStocks, listTradeHistory } from "@/lib/domain/history";
 
 export const metadata: Metadata = {
   title: "매수 히스토리",
-  description: "가족별 국내 주식 매수 기록을 모든 필드로 검색합니다.",
+  description: "가족별 국내 주식 매수 기록을 기간, 종목, 소유주, 증권사로 검색합니다.",
 };
 
 export const dynamic = "force-dynamic";
@@ -16,19 +16,7 @@ type BuyHistoryPageProps = Readonly<{
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }>;
 
-const FILTER_KEYS = [
-  "from",
-  "to",
-  "q",
-  "ownerId",
-  "brokerageCode",
-  "quantityMin",
-  "quantityMax",
-  "unitPriceMin",
-  "unitPriceMax",
-  "amountMin",
-  "amountMax",
-] as const;
+const FILTER_KEYS = ["from", "to", "q", "ownerId", "brokerageCode"] as const;
 
 function hasActiveFilters(searchParams: Awaited<BuyHistoryPageProps["searchParams"]>): boolean {
   return FILTER_KEYS.some((key) => {
@@ -41,9 +29,10 @@ function hasActiveFilters(searchParams: Awaited<BuyHistoryPageProps["searchParam
 
 export default async function BuyHistoryPage({ searchParams }: BuyHistoryPageProps) {
   const rawSearchParams = await searchParams;
-  const [result, brokerages] = await Promise.all([
+  const [result, brokerages, stocks] = await Promise.all([
     listTradeHistory("BUY", rawSearchParams),
     listBrokerages(),
+    listPurchasedStocks(),
   ]);
   const filtered = hasActiveFilters(rawSearchParams);
   const showFilteredEmptyState = filtered && result.unfilteredTotal > 0;
@@ -53,9 +42,7 @@ export default async function BuyHistoryPage({ searchParams }: BuyHistoryPagePro
       <header className="page-intro">
         <p className="page-eyebrow">거래 원장 · 매수</p>
         <h1 className="page-title">매수 히스토리</h1>
-        <p className="page-description">
-          거래일시, 종목, 수량, 단가, 매입액, 소유주별로 찾아보세요.
-        </p>
+        <p className="page-description">기간, 매수했던 종목, 소유주, 증권사 기준으로 찾아보세요.</p>
       </header>
 
       <section className="history-section" aria-labelledby="buy-history-title">
@@ -72,7 +59,7 @@ export default async function BuyHistoryPage({ searchParams }: BuyHistoryPagePro
         </div>
 
         <Suspense fallback={<p role="status">매수 필터를 불러오는 중입니다.</p>}>
-          <HistoryFilters brokerages={brokerages} side="BUY" />
+          <HistoryFilters brokerages={brokerages} stocks={stocks} side="BUY" />
         </Suspense>
         <TradeHistory
           side="BUY"

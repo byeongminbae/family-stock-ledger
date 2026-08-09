@@ -95,49 +95,48 @@ test("한글 종목 선택 뒤 거래 정수 필드는 비정수 입력을 무�
   await expect(page.getByText("700,000원", { exact: true })).toBeVisible();
 });
 
-test("검색 범위 정수 필드는 비정수 입력을 무효화하고 범위 검증을 유지한다", async ({ page }) => {
+test("히스토리 검색은 숫자 범위 없이 빠른 기간 선택과 하나의 기간 입력을 제공한다", async ({
+  page,
+}) => {
   await page.goto("/buy-history");
 
-  const rangeInputs = page.locator('input[name$="Min"], input[name$="Max"]');
-  await expect(rangeInputs).toHaveCount(6);
-  const attributes = await rangeInputs.evaluateAll((elements) =>
-    elements.map((element) => ({
-      inputMode: element.getAttribute("inputmode"),
-      min: element.getAttribute("min"),
-      step: element.getAttribute("step"),
-      type: element.getAttribute("type"),
-    })),
-  );
-  expect(attributes).toEqual(
-    Array.from({ length: 6 }, () => ({ inputMode: null, min: null, step: null, type: "text" })),
-  );
+  await expect(page.locator('input[name$="Min"], input[name$="Max"]')).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "당일" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "당월" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "1주일" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "1개월" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "1년" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "기간선택" })).toBeVisible();
 
-  const quantityMin = page.locator('input[name="quantityMin"]');
-  await quantityMin.fill("10");
-  await quantityMin.fill("10.5");
-  await expect(quantityMin).toHaveValue("10");
-
-  await page.locator('input[name="quantityMax"]').fill("5");
+  await page.getByRole("button", { name: "1주일" }).click();
+  await expect(page.getByRole("button", { name: "1주일" })).toHaveAttribute("aria-pressed", "true");
+  const from = page.locator('input[name="from"]');
+  const to = page.locator('input[name="to"]');
+  await expect(from).toHaveValue(/\d{4}-\d{2}-\d{2}/);
+  await expect(to).toHaveValue(/\d{4}-\d{2}-\d{2}/);
   await page.getByRole("button", { name: "검색 적용" }).click();
 
-  await expect(
-    page.getByRole("alert").filter({ hasText: "수량 최솟값은 최댓값보다 클 수 없습니다." }),
-  ).toHaveText("수량 최솟값은 최댓값보다 클 수 없습니다.");
+  await expect(page).toHaveURL(/from=\d{4}-\d{2}-\d{2}.*to=\d{4}-\d{2}-\d{2}/);
+  await expect(page.getByRole("button", { name: "1주일" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /기간: .* ~ .*/ })).toBeVisible();
+  await page.getByRole("button", { name: /기간: .* ~ .*/ }).click();
   await expect(page).toHaveURL(/\/buy-history$/);
 });
 
-test("손익 검색 범위는 음의 정수를 허용하고 소수 입력을 무효화한다", async ({ page }) => {
+test("히스토리 종목 검색은 외부 종목 검색 API 없이 로컬 목록만 연다", async ({ page }) => {
+  let marketSearchCalls = 0;
+  await page.route("**/api/stocks/search**", async (route) => {
+    marketSearchCalls += 1;
+    await route.abort();
+  });
   await page.goto("/sell-history");
 
-  const profitMin = page.locator('input[name="profitMin"]');
-  await profitMin.fill("-");
-  await expect(profitMin).toHaveValue("-");
-  await profitMin.fill("-12");
-  await profitMin.fill("-12.5");
-  await expect(profitMin).toHaveValue("-12");
-
-  await page.getByRole("button", { name: "검색 적용" }).click();
-  await expect(page).toHaveURL(/profitMin=-12/);
+  const combobox = page.getByRole("combobox", { name: "종목명 또는 종목코드" });
+  await combobox.click();
+  await expect(combobox).toHaveAttribute("aria-expanded", "true");
+  await combobox.fill("삼성");
+  await expect(combobox).toHaveValue("삼성");
+  expect(marketSearchCalls).toBe(0);
 });
 
 test("새 검색 응답을 기다리는 Enter는 보이는 첫 종목을 선택한다", async ({ page }) => {

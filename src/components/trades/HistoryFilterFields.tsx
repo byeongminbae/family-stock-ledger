@@ -1,116 +1,105 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Brokerage } from "@/lib/domain/brokerages";
-import { FILTER_RANGES, PROFIT_RANGE } from "./history-filter-config";
+import { HistoryStockCombobox } from "./HistoryStockCombobox";
+import { periodRange } from "./history-date-range";
+import { PERIOD_PRESETS } from "./history-filter-config";
 import styles from "./history-filters.module.css";
-import { isIntegerDraft } from "./integer-input";
-import { OWNERS, sideLabel, type TradeSide } from "./types";
+import { OWNERS, type StockSelection } from "./types";
 
-interface RangeInputProps {
-  readonly legend: string;
-  readonly min: string;
-  readonly max: string;
-  readonly unit: string;
-  readonly minValue: string;
-  readonly maxValue: string;
-  readonly signed?: boolean;
+interface HistoryFilterFieldsProps {
+  readonly brokerages: readonly Brokerage[];
+  readonly stocks: readonly StockSelection[];
+  readonly value: (key: string) => string;
 }
 
-function RangeInput({
-  legend,
-  min,
-  max,
-  unit,
-  minValue,
-  maxValue,
-  signed = false,
-}: RangeInputProps) {
-  const [minimumValue, setMinimumValue] = useState(minValue);
-  const [maximumValue, setMaximumValue] = useState(maxValue);
+function selectedPeriod(from: string, to: string): (typeof PERIOD_PRESETS)[number] | null {
+  if (!from && !to) return null;
+  if (!from || !to) return "기간선택";
+  for (const preset of PERIOD_PRESETS) {
+    if (preset === "기간선택") continue;
+    const range = periodRange(preset);
+    if (range.from === from && range.to === to) return preset;
+  }
+  return "기간선택";
+}
+
+function HistoryDateRange({ value }: Pick<HistoryFilterFieldsProps, "value">) {
+  const [from, setFrom] = useState(() => value("from"));
+  const [to, setTo] = useState(() => value("to"));
+  const [selectedPreset, setSelectedPreset] = useState<(typeof PERIOD_PRESETS)[number] | null>(() =>
+    selectedPeriod(value("from"), value("to")),
+  );
+  const fromInput = useRef<HTMLInputElement>(null);
+
+  const applyPeriod = (preset: (typeof PERIOD_PRESETS)[number]) => {
+    if (preset === "기간선택") {
+      setSelectedPreset(preset);
+      fromInput.current?.focus();
+      return;
+    }
+    const range = periodRange(preset);
+    setFrom(range.from);
+    setTo(range.to);
+    setSelectedPreset(preset);
+  };
 
   return (
-    <fieldset className={styles.range}>
-      <legend>{legend}</legend>
-      <label className={styles.rangeField} htmlFor={`filter-${min}`}>
-        <span>최소</span>
-        <input
-          id={`filter-${min}`}
-          className="control"
-          name={min}
-          type="text"
-          onChange={(event) => {
-            const value = event.currentTarget.value;
-            if (isIntegerDraft(value, signed)) setMinimumValue(value);
-          }}
-          placeholder={`최소 ${unit}`}
-          value={minimumValue}
-        />
-      </label>
-      <span aria-hidden="true">-</span>
-      <label className={styles.rangeField} htmlFor={`filter-${max}`}>
-        <span>최대</span>
-        <input
-          id={`filter-${max}`}
-          className="control"
-          name={max}
-          type="text"
-          onChange={(event) => {
-            const value = event.currentTarget.value;
-            if (isIntegerDraft(value, signed)) setMaximumValue(value);
-          }}
-          placeholder={`최대 ${unit}`}
-          value={maximumValue}
-        />
-      </label>
+    <fieldset className={styles.dateRange}>
+      <legend>기간</legend>
+      <div className={styles.periodPresets}>
+        {PERIOD_PRESETS.map((preset) => (
+          <button
+            className="button button--secondary"
+            key={preset}
+            type="button"
+            aria-pressed={selectedPreset === preset}
+            onClick={() => applyPeriod(preset)}
+          >
+            {preset}
+          </button>
+        ))}
+      </div>
+      <div className={styles.dateInputs}>
+        <label className={styles.dateInput} htmlFor="filter-from">
+          <span className="sr-only">시작일</span>
+          <input
+            className="control"
+            id="filter-from"
+            name="from"
+            ref={fromInput}
+            type="date"
+            value={from}
+            onChange={(event) => {
+              setFrom(event.currentTarget.value);
+              setSelectedPreset("기간선택");
+            }}
+          />
+        </label>
+        <span aria-hidden="true">~</span>
+        <label className={styles.dateInput} htmlFor="filter-to">
+          <span className="sr-only">종료일</span>
+          <input
+            className="control"
+            id="filter-to"
+            name="to"
+            type="date"
+            value={to}
+            onChange={(event) => {
+              setTo(event.currentTarget.value);
+              setSelectedPreset("기간선택");
+            }}
+          />
+        </label>
+      </div>
     </fieldset>
   );
 }
 
-interface HistoryFilterFieldsProps {
-  readonly brokerages: readonly Brokerage[];
-  readonly side: TradeSide;
-  readonly value: (key: string) => string;
-}
-
-export function HistoryFilterFields({ brokerages, side, value }: HistoryFilterFieldsProps) {
+export function HistoryFilterFields({ brokerages, stocks, value }: HistoryFilterFieldsProps) {
   return (
     <>
-      <div className="field">
-        <label className="field-label" htmlFor="filter-from">
-          {sideLabel(side)} 시작 일시
-        </label>
-        <input
-          id="filter-from"
-          className="control"
-          name="from"
-          type="datetime-local"
-          defaultValue={value("from")}
-        />
-      </div>
-      <div className="field">
-        <label className="field-label" htmlFor="filter-to">
-          {sideLabel(side)} 종료 일시
-        </label>
-        <input
-          id="filter-to"
-          className="control"
-          name="to"
-          type="datetime-local"
-          defaultValue={value("to")}
-        />
-      </div>
-      <div className="field">
-        <label className="field-label" htmlFor="filter-stock">
-          종목명 또는 종목코드
-        </label>
-        <input
-          id="filter-stock"
-          className="control"
-          name="q"
-          type="search"
-          defaultValue={value("q")}
-          placeholder="예: 삼성전자, 005930"
-        />
-      </div>
+      <HistoryDateRange value={value} />
+      <HistoryStockCombobox initialValue={value("q")} stocks={stocks} />
       <div className="field">
         <label className="field-label" htmlFor="filter-owner">
           소유주
@@ -147,17 +136,6 @@ export function HistoryFilterFields({ brokerages, side, value }: HistoryFilterFi
           ))}
         </select>
       </div>
-      {FILTER_RANGES.map((group) => (
-        <RangeInput
-          key={group.min}
-          {...group}
-          minValue={value(group.min)}
-          maxValue={value(group.max)}
-        />
-      ))}
-      {side === "SELL" ? (
-        <RangeInput {...PROFIT_RANGE} minValue={value("profitMin")} maxValue={value("profitMax")} />
-      ) : null}
     </>
   );
 }

@@ -24,33 +24,106 @@
   padding-block-start: var(--space-3);
 }
 
-.range {
+.dateRange {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-2);
+  grid-column: span 3;
+  grid-template-columns: minmax(21rem, auto) minmax(22rem, 1fr);
+  align-items: end;
+  gap: var(--space-3);
   min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-.range legend {
+.dateRange legend {
   grid-column: 1 / -1;
   margin-block-end: var(--space-1);
   font-size: var(--font-size-meta);
   font-weight: 700;
 }
 
-.rangeField {
-  display: grid;
+.periodPresets {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
-  color: var(--color-text-muted);
+}
+
+.periodPresets button {
+  min-height: 44px;
+  padding-inline: var(--space-2);
   font-size: var(--font-size-xs);
 }
 
-.rangeField input {
+.periodPresets button[aria-pressed="true"] {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
+.dateInputs {
+  display: grid;
+  grid-template-columns: minmax(10.5rem, 1fr) auto minmax(10.5rem, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.dateInput {
   min-width: 0;
+}
+
+.dateInput input {
+  min-width: 0;
+}
+
+.stockField {
+  min-width: 0;
+}
+
+.stockAnchor {
+  position: relative;
+}
+
+.stockPopover {
+  position: absolute;
+  z-index: 30;
+  inset: calc(100% + var(--space-1)) 0 auto;
+  max-height: 40dvh;
+  overflow-y: auto;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-popover);
+}
+
+.stockOption {
+  display: grid;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  font: inherit;
+  text-align: start;
+}
+
+.stockOption span {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.stockOption:hover,
+.stockOption[aria-selected="true"] {
+  background: var(--color-brand-soft);
+}
+
+.stockMessage {
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--color-text-muted);
 }
 
 .actions {
@@ -96,6 +169,21 @@
 @media (max-width: 1119px) {
   .form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dateRange {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(19rem, auto) minmax(0, 1fr);
+  }
+
+  .dateInputs {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .dateRange {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

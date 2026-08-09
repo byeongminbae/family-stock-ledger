@@ -40,7 +40,7 @@ export function StockCombobox({ value, onChange, error, disabled = false }: Stoc
   const statusId = `${baseId}-status`;
   const composingRef = useRef(false);
   const requestSequenceRef = useRef(0);
-  const [query, setQuery] = useState(value?.name ?? "");
+  const [query, setQuery] = useState("");
   const [items, setItems] = useState<readonly StockSelection[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [open, setOpen] = useState(false);
@@ -93,7 +93,7 @@ export function StockCombobox({ value, onChange, error, disabled = false }: Stoc
 
   const choose = (stock: StockSelection) => {
     onChange(stock);
-    setQuery(stock.name);
+    setQuery("");
     setOpen(false);
     setItems([]);
     setState("idle");
@@ -175,7 +175,7 @@ export function StockCombobox({ value, onChange, error, disabled = false }: Stoc
           aria-invalid={error ? true : undefined}
           autoComplete="off"
           disabled={disabled}
-          value={query}
+          value={value?.name ?? query}
           onChange={handleInput}
           onKeyDown={handleKeyDown}
           onCompositionStart={handleComposition}

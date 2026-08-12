@@ -28,7 +28,7 @@ describe("dashboard summary", () => {
     const summary = createElement(SummaryStrip, {
       positions: [],
       quoteFetchedAt: null,
-      valuationSessions: ["PREOPEN", "BEFORE_MARKET", "REGULAR", "AFTER_MARKET"],
+      valuationSessions: ["PREOPEN", "PRE_MARKET", "REGULAR", "AFTER_MARKET"],
       refreshing: false,
       onRefresh: () => undefined,
     });

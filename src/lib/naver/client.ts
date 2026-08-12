@@ -108,8 +108,8 @@ function valuationSessionFor(
       return "PREOPEN";
     case "REGULAR":
       return "REGULAR";
-    case "BEFORE_MARKET":
-      return "BEFORE_MARKET";
+    case "PRE_MARKET":
+      return "PRE_MARKET";
     case "AFTER_MARKET": {
       const tradingDate = localTradedAt.slice(0, 10);
       const expiresAt = Date.parse(`${tradingDate}T00:00:00+09:00`) + AFTER_MARKET_EXPIRY_OFFSET_MS;
@@ -232,7 +232,7 @@ async function fetchPriceBatch(itemCodes: readonly string[]): Promise<readonly N
           session,
           stockName: item.stockName,
         };
-      case "BEFORE_MARKET":
+      case "PRE_MARKET":
       case "AFTER_MARKET":
         return {
           itemCode: item.itemCode,

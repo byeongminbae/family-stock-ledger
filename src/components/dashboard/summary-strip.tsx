@@ -14,7 +14,7 @@ type SummaryStripProps = Readonly<{
 
 const marketSessionLabels = {
   PREOPEN: "정규장",
-  BEFORE_MARKET: "장전",
+  PRE_MARKET: "장전",
   REGULAR: "정규장",
   AFTER_MARKET: "장후",
 } as const satisfies Readonly<Record<MarketSession, string>>;

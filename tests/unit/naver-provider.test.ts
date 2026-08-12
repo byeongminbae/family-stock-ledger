@@ -98,7 +98,7 @@ describe("Naver market price provider", () => {
                 overMarketPriceInfo: {
                   localTradedAt: "2026-08-12T08:20:00+09:00",
                   overPrice: "234,500",
-                  tradingSessionType: "BEFORE_MARKET",
+                  tradingSessionType: "PRE_MARKET",
                 },
                 stockName: "SK하이닉스",
               },
@@ -126,7 +126,7 @@ describe("Naver market price provider", () => {
         localTradedAt: "2026-08-12T08:20:00+09:00",
         marketStatus: "CLOSE",
         price: "234500",
-        session: "BEFORE_MARKET",
+        session: "PRE_MARKET",
         stockName: "SK하이닉스",
       },
       "005930": {

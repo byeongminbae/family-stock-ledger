@@ -165,7 +165,7 @@ function summarizePositionTotals(
       )
     : null;
   return {
-    stockCount: positions.length,
+    stockCount: new Set(positions.map((position) => position.itemCode)).size,
     acquisitionAmount: decimalText(acquisitionAmount),
     portfolioWeightPercent,
     currentPrice: null,

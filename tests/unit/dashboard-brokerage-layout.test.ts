@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { OwnerSection } from "../../src/components/dashboard/owner-section";
 import { PositionCards } from "../../src/components/dashboard/position-cards";
 import { PositionTable } from "../../src/components/dashboard/position-table";
 import type {
@@ -61,6 +62,51 @@ const totals: OwnerTotals = {
 };
 
 describe("dashboard brokerage layout", () => {
+  it("shows a unique stock count for an owner holding the same stock at two brokerages", () => {
+    // Given: the owner's Samsung Electronics position is split between two brokerages.
+    const duplicatedStockGroups: readonly BrokeragePositionGroup[] = [
+      {
+        brokerageCode: "240",
+        brokerageName: "삼성증권",
+        positions: [samsungPosition],
+        totals: {
+          stockCount: 1,
+          costBasis: "140000",
+          portfolioWeight: "100",
+          currentPrice: null,
+          valuation: "160000",
+          unrealizedProfit: "20000",
+        },
+      },
+      {
+        brokerageCode: "264",
+        brokerageName: "키움증권",
+        positions: [{ ...samsungPosition, brokerageCode: "264", brokerageName: "키움증권" }],
+        totals: {
+          stockCount: 1,
+          costBasis: "140000",
+          portfolioWeight: "100",
+          currentPrice: null,
+          valuation: "160000",
+          unrealizedProfit: "20000",
+        },
+      },
+    ];
+
+    // When: the owner's dashboard section is rendered with a one-stock owner total.
+    const markup = renderToStaticMarkup(
+      createElement(OwnerSection, {
+        ownerName: "병민",
+        groups: duplicatedStockGroups,
+        totals: { ...totals, stockCount: 1 },
+      }),
+    );
+
+    // Then: the owner heading reports two brokerages but only one unique stock.
+    expect(markup).toContain("2개 증권사, 1개 종목 보유");
+    expect(markup).toContain("전체 합계 (1종목)");
+  });
+
   it("renders brokerage as a compact table column", () => {
     // Given: one brokerage containing two aggregated stock positions.
     const table = createElement(PositionTable, {

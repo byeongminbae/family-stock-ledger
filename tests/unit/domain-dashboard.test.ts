@@ -140,8 +140,8 @@ describe("dashboard portfolio math", () => {
 });
 
 describe("owner dashboard totals", () => {
-  it("sums meaningful owner totals when market quotes are complete", () => {
-    // Given: one owner's held positions with complete market quotes.
+  it("counts the same stock at multiple brokerages once in owner totals", () => {
+    // Given: one owner holds Samsung Electronics at two brokerages with complete market quotes.
     const positions: readonly DashboardPosition[] = [
       {
         ownerId: 1,
@@ -165,8 +165,8 @@ describe("owner dashboard totals", () => {
         ownerName: "병민",
         brokerageCode: "264",
         brokerageName: "키움증권",
-        itemCode: "000660",
-        stockName: "SK하이닉스",
+        itemCode: "005930",
+        stockName: "삼성전자",
         quantity: "1",
         averageBuyPrice: "300",
         acquisitionAmount: "300",
@@ -182,9 +182,9 @@ describe("owner dashboard totals", () => {
     // When: the owner subtotal is calculated.
     const totals = summarizeOwnerTotals(positions);
 
-    // Then: additive money columns are summed and the owner weight is omitted.
+    // Then: the stock is counted once while additive money columns still include both positions.
     expect(totals).toStrictEqual({
-      stockCount: 2,
+      stockCount: 1,
       acquisitionAmount: "500",
       portfolioWeightPercent: null,
       currentPrice: null,

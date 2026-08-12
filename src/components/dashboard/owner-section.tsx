@@ -83,7 +83,7 @@ export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
           <p className={styles.ownerEyebrow}>소유주</p>
           <h2 id={headingId}>{ownerName}</h2>
           <p>
-            {groups.length}개 증권사, {positionCount}개 종목 보유
+            {groups.length}개 증권사, {totals.stockCount}개 종목 보유
           </p>
         </div>
         <div className={styles.sortControls}>

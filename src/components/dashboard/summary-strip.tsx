@@ -44,7 +44,12 @@ export function SummaryStrip({
   const totalCostBasis = totalOf(positions, "costBasis");
   const totalValuation = totalOf(positions, "valuation");
   const totalProfit = totalOf(positions, "unrealizedProfit");
-  const quotedCount = positions.filter((position) => position.currentPrice !== null).length;
+  const stockCount = new Set(positions.map((position) => position.itemCode)).size;
+  const quotedCount = new Set(
+    positions
+      .filter((position) => position.currentPrice !== null)
+      .map((position) => position.itemCode),
+  ).size;
   const valuationBasis =
     valuationSessions.length === 0
       ? "-"
@@ -56,7 +61,7 @@ export function SummaryStrip({
         <div>
           <h2 id="portfolio-summary">전체 보유 현황</h2>
           <p>
-            {formatQuoteTime(quoteFetchedAt)} · {quotedCount}/{positions.length}개 종목 가격 확인
+            {formatQuoteTime(quoteFetchedAt)} · {quotedCount}/{stockCount}개 종목 가격 확인
           </p>
         </div>
         <button
@@ -73,7 +78,7 @@ export function SummaryStrip({
       <dl className={styles.summaryGrid} aria-live="polite">
         <div>
           <dt>보유 종목</dt>
-          <dd>{positions.length}개</dd>
+          <dd>{stockCount}개</dd>
         </div>
         <div>
           <dt>평가 기준</dt>
@@ -102,7 +107,7 @@ export function SummaryStrip({
           </dd>
         </div>
       </dl>
-      {quotedCount < positions.length && positions.length > 0 ? (
+      {quotedCount < stockCount && stockCount > 0 ? (
         <p className={styles.quoteNotice} role="status">
           일부 가격을 불러오지 못해 전체 평가액과 평가 손익을 계산하지 않았습니다. DB 기반 보유
           정보는 그대로 표시합니다.

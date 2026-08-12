@@ -2,6 +2,8 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
+import { openDeletionConfirmation, submitDeletionConfirmation } from "./helpers/trade-deletion";
+
 if (process.env.PLAYWRIGHT_BASE_URL === undefined) {
   throw new Error("실데이터를 변경하는 journal E2E에는 격리된 PLAYWRIGHT_BASE_URL이 필요합니다.");
 }
@@ -67,19 +69,6 @@ async function capture(page: Page, name: string, fullPage = true) {
       element.parentNode?.removeChild(element);
     });
   }
-}
-
-async function openDeletionConfirmation(
-  page: Page,
-  trigger: Locator,
-  side: "매수" | "매도",
-  count: number,
-): Promise<Locator> {
-  await trigger.click();
-  const dialog = page.getByRole("dialog", { name: `${side} 기록 삭제` });
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText(`선택한 ${count}건의 ${side} 기록을 삭제할까요?`);
-  return dialog;
 }
 
 async function addTrade(
@@ -171,14 +160,14 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
   await page.getByRole("button", { name: "삭제", exact: true }).click();
   const oversoldBuy = page.getByRole("row", { name: /삼성전자.*병민.*10주/ });
   await oversoldBuy.getByRole("checkbox").check();
-  const rejectedBuyDialog = await openDeletionConfirmation(
+  const rejectedBuyDialog = await openDeletionConfirmation({
+    count: 1,
     page,
-    page.getByRole("button", { name: "선택 삭제" }),
-    "매수",
-    1,
-  );
+    side: "매수",
+    trigger: page.getByRole("button", { name: "선택 삭제" }),
+  });
   await capture(page, "buy-history-delete-confirmation-1280.png", false);
-  await rejectedBuyDialog.getByRole("button", { name: "삭제", exact: true }).click();
+  await submitDeletionConfirmation(rejectedBuyDialog);
   await expect(
     page.getByText(/삭제에 실패했습니다. 어떤 기록도 삭제되지 않았습니다/),
   ).toBeVisible();
@@ -192,7 +181,12 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
   await hynixBuy.getByRole("checkbox").check();
   await capture(page, "buy-history-delete-selection-1280.png");
   const dismissedBuyTrigger = page.getByRole("button", { name: "선택 삭제" });
-  const dismissedBuyDialog = await openDeletionConfirmation(page, dismissedBuyTrigger, "매수", 1);
+  const dismissedBuyDialog = await openDeletionConfirmation({
+    count: 1,
+    page,
+    side: "매수",
+    trigger: dismissedBuyTrigger,
+  });
   await page.keyboard.press("Escape");
   await expect(dismissedBuyDialog).toBeHidden();
   await expect(dismissedBuyTrigger).toBeFocused();
@@ -202,13 +196,13 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
   await expect(page.getByRole("checkbox", { name: /SK하이닉스 거래 선택/ })).toBeChecked();
   await capture(page, "buy-history-delete-selection-mobile-375.png");
   await page.setViewportSize({ width: 1280, height: 900 });
-  const acceptedBuyDialog = await openDeletionConfirmation(
+  const acceptedBuyDialog = await openDeletionConfirmation({
+    count: 1,
     page,
-    page.getByRole("button", { name: "선택 삭제" }),
-    "매수",
-    1,
-  );
-  await acceptedBuyDialog.getByRole("button", { name: "삭제", exact: true }).click();
+    side: "매수",
+    trigger: page.getByRole("button", { name: "선택 삭제" }),
+  });
+  await submitDeletionConfirmation(acceptedBuyDialog);
   await expect(page.getByText("매수 기록 1건을 삭제했습니다.")).toBeVisible();
   await expect(page.getByRole("row", { name: /SK하이닉스/ })).toHaveCount(0);
 
@@ -219,14 +213,14 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
     .getByRole("checkbox")
     .check();
   await capture(page, "sell-history-delete-selection-1280.png");
-  const acceptedSellDialog = await openDeletionConfirmation(
+  const acceptedSellDialog = await openDeletionConfirmation({
+    count: 1,
     page,
-    page.getByRole("button", { name: "선택 삭제" }),
-    "매도",
-    1,
-  );
+    side: "매도",
+    trigger: page.getByRole("button", { name: "선택 삭제" }),
+  });
   await capture(page, "sell-history-delete-confirmation-1280.png", false);
-  await acceptedSellDialog.getByRole("button", { name: "삭제", exact: true }).click();
+  await submitDeletionConfirmation(acceptedSellDialog);
   await expect(page.getByText("매도 기록 1건을 삭제했습니다.")).toBeVisible();
   await expect(page.getByText("아직 매도 기록이 없습니다.")).toBeVisible();
   await capture(page, "sell-history-deletion-success-1280.png");

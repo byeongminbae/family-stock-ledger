@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -26,9 +26,24 @@ export function TradeDeleteConfirmationDialog({
   onConfirm,
 }: TradeDeleteConfirmationDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [confirmationText, setConfirmationText] = useState("");
   const label = sideLabel(side);
+  const isConfirmed = confirmationText === "삭제";
   const titleId = `${side}-delete-confirmation-title`;
   const descriptionId = `${side}-delete-confirmation-description`;
+  const confirmationInputId = `${side}-delete-confirmation-input`;
+  const confirmationHintId = `${side}-delete-confirmation-hint`;
+
+  const cancelDeletion = () => {
+    setConfirmationText("");
+    onCancel();
+  };
+
+  const confirmDeletion = () => {
+    if (!isConfirmed) return;
+    setConfirmationText("");
+    onConfirm();
+  };
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -46,7 +61,7 @@ export function TradeDeleteConfirmationDialog({
       className={styles.confirmationDialog}
       onCancel={(event) => {
         event.preventDefault();
-        onCancel();
+        cancelDeletion();
       }}
       ref={dialogRef}
     >
@@ -78,11 +93,35 @@ export function TradeDeleteConfirmationDialog({
             </li>
           ))}
         </ul>
+        <div className="field">
+          <label className="field-label" htmlFor={confirmationInputId}>
+            삭제 확인
+          </label>
+          <input
+            aria-describedby={confirmationHintId}
+            autoComplete="off"
+            autoFocus
+            className="control"
+            id={confirmationInputId}
+            onChange={(event) => setConfirmationText(event.currentTarget.value)}
+            spellCheck={false}
+            type="text"
+            value={confirmationText}
+          />
+          <p className="field-hint" id={confirmationHintId}>
+            계속하려면 <strong>삭제</strong>를 정확히 입력해 주세요.
+          </p>
+        </div>
         <div className={styles.confirmationActions}>
-          <Button autoFocus onClick={onCancel} variant="secondary">
+          <Button onClick={cancelDeletion} variant="secondary">
             취소
           </Button>
-          <Button isBusy={deleting} onClick={onConfirm} variant="danger">
+          <Button
+            disabled={!isConfirmed}
+            isBusy={deleting}
+            onClick={confirmDeletion}
+            variant="danger"
+          >
             삭제
           </Button>
         </div>

@@ -97,3 +97,45 @@ test("선택 삭제 경고는 매수 일시와 종목명, 증권사를 기록별
   const overflow = await dialog.evaluate((element) => element.scrollWidth - element.clientWidth);
   expect(overflow).toBe(0);
 });
+
+test("삭제 문구가 정확하지 않으면 선택 기록 삭제를 허용하지 않는다", async ({ page }) => {
+  // Given: one selected buy history in the deletion confirmation dialog.
+  await page.goto("/buy-history");
+  await page.getByRole("button", { name: "삭제", exact: true }).click();
+  const targetRow = page.getByRole("row", { name: new RegExp(fixtures[0].stockName) });
+  await targetRow.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "선택 삭제" }).click();
+  const dialog = page.getByRole("dialog", { name: "매수 기록 삭제" });
+  const deleteButton = dialog.getByRole("button", { name: "삭제", exact: true });
+
+  // When: the confirmation includes a trailing space.
+  await dialog.getByLabel("삭제 확인").fill("삭제 ");
+
+  // Then: deletion remains unavailable and the selected row remains.
+  await expect(deleteButton).toBeDisabled();
+  await expect(targetRow).toBeVisible();
+});
+
+test("삭제 문구를 정확히 입력하면 선택 기록을 삭제한다", async ({ page }) => {
+  // Given: one selected buy history and an open deletion confirmation dialog.
+  await page.goto("/buy-history");
+  await page.getByRole("button", { name: "삭제", exact: true }).click();
+  const targetRow = page.getByRole("row", { name: new RegExp(fixtures[0].stockName) });
+  await targetRow.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "선택 삭제" }).click();
+  const dialog = page.getByRole("dialog", { name: "매수 기록 삭제" });
+  await dialog.getByLabel("삭제 확인").fill("삭제");
+
+  // When: the enabled confirmation button is pressed.
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "DELETE" && response.url().endsWith("/api/trades"),
+  );
+  await dialog.getByRole("button", { name: "삭제", exact: true }).click();
+
+  // Then: one deletion request succeeds and the selected row disappears.
+  await expect((await responsePromise).ok()).toBe(true);
+  await expect(page.getByText("매수 기록 1건을 삭제했습니다.")).toBeVisible();
+  await expect(targetRow).toHaveCount(0);
+  createdTradeIds.splice(0, 1);
+});

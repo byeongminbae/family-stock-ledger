@@ -1,6 +1,8 @@
 import ky from "ky";
 import { z } from "zod";
 
+import { MARKET_SESSIONS, type MarketSession } from "@/lib/domain/market-session";
+
 const NAVER_API_BASE_URL = "https://m.stock.naver.com/front-api";
 const PRICE_BATCH_SIZE = 50;
 const AFTER_MARKET_EXPIRY_OFFSET_MS = (24 + 3) * 60 * 60 * 1_000;
@@ -11,7 +13,7 @@ const formattedPriceSchema = z
   .string()
   .regex(/^\d+(?:,\d{3})*$/)
   .transform((value) => value.replaceAll(",", ""));
-const tradingSessionTypeSchema = z.enum(["REGULAR", "BEFORE_MARKET", "AFTER_MARKET"]);
+const tradingSessionTypeSchema = z.enum(MARKET_SESSIONS);
 const searchResponseSchema = z.object({
   isSuccess: z.literal(true),
   result: z.object({
@@ -76,6 +78,7 @@ export type NaverMarketPrice = Readonly<{
   localTradedAt: string;
   marketStatus: string;
   price: string;
+  session: MarketSession;
   stockName: string;
 }>;
 
@@ -86,20 +89,24 @@ export class NaverProviderError extends Error {
   }
 }
 
-function priceSourceForTradingSession(
-  session: z.infer<typeof tradingSessionTypeSchema>,
+function valuationSessionFor(
+  session: MarketSession,
   localTradedAt: string,
   currentTime: Date,
-): "regular" | "overMarket" {
+): MarketSession {
   switch (session) {
     case "REGULAR":
-      return "regular";
+      return "REGULAR";
     case "BEFORE_MARKET":
-      return "overMarket";
+      return "BEFORE_MARKET";
     case "AFTER_MARKET": {
       const tradingDate = localTradedAt.slice(0, 10);
       const expiresAt = Date.parse(`${tradingDate}T00:00:00+09:00`) + AFTER_MARKET_EXPIRY_OFFSET_MS;
-      return currentTime.getTime() < expiresAt ? "overMarket" : "regular";
+      return currentTime.getTime() < expiresAt ? "AFTER_MARKET" : "REGULAR";
+    }
+    default: {
+      const unsupportedSession: never = session;
+      throw new RangeError(`지원하지 않는 거래 세션입니다: ${unsupportedSession}`);
     }
   }
 }
@@ -187,20 +194,30 @@ async function fetchPriceBatch(itemCodes: readonly string[]): Promise<readonly N
 
   return parsed.result.datas.map((item) => {
     const overMarketPriceInfo = item.overMarketPriceInfo;
-    const useOverMarketPrice =
-      overMarketPriceInfo !== null &&
-      overMarketPriceInfo !== undefined &&
-      priceSourceForTradingSession(
-        overMarketPriceInfo.tradingSessionType,
-        overMarketPriceInfo.localTradedAt,
-        currentTime,
-      ) === "overMarket";
+    if (overMarketPriceInfo === null || overMarketPriceInfo === undefined) {
+      return {
+        itemCode: item.itemCode,
+        localTradedAt: item.localTradedAt,
+        marketStatus: item.marketStatus,
+        price: item.closePriceRaw,
+        session: "REGULAR",
+        stockName: item.stockName,
+      };
+    }
+
+    const session = valuationSessionFor(
+      overMarketPriceInfo.tradingSessionType,
+      overMarketPriceInfo.localTradedAt,
+      currentTime,
+    );
+    const useOverMarketPrice = session === "BEFORE_MARKET" || session === "AFTER_MARKET";
 
     return {
       itemCode: item.itemCode,
       localTradedAt: useOverMarketPrice ? overMarketPriceInfo.localTradedAt : item.localTradedAt,
       marketStatus: item.marketStatus,
       price: useOverMarketPrice ? overMarketPriceInfo.overPrice : item.closePriceRaw,
+      session,
       stockName: item.stockName,
     };
   });

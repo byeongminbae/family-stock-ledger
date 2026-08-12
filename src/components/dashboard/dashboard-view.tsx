@@ -40,6 +40,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
       <SummaryStrip
         positions={snapshot.positions}
         quoteFetchedAt={snapshot.quoteFetchedAt}
+        valuationSessions={snapshot.valuationSessions}
         refreshing={refreshing}
         onRefresh={refreshPrices}
       />

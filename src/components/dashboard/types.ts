@@ -1,3 +1,5 @@
+import type { MarketSession } from "@/lib/domain/market-session";
+
 export const OWNER_NAMES = ["병민", "할머니", "아빠"] as const;
 
 export type OwnerName = (typeof OWNER_NAMES)[number];
@@ -40,6 +42,7 @@ export type DashboardSnapshot = Readonly<{
   brokerageGroups: Readonly<Record<OwnerName, readonly BrokeragePositionGroup[]>>;
   ownerTotals: Readonly<Record<OwnerName, OwnerTotals>>;
   quoteFetchedAt: string | null;
+  valuationSessions: readonly MarketSession[];
 }>;
 
 export type SortField =

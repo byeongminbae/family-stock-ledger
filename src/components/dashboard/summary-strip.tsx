@@ -1,4 +1,5 @@
 import Decimal from "decimal.js";
+import type { MarketSession } from "@/lib/domain/market-session";
 import styles from "./dashboard.module.css";
 import { formatQuoteTime, formatSignedWon, formatWon } from "./format";
 import type { DashboardPosition } from "./types";
@@ -6,9 +7,16 @@ import type { DashboardPosition } from "./types";
 type SummaryStripProps = Readonly<{
   positions: readonly DashboardPosition[];
   quoteFetchedAt: string | null;
+  valuationSessions: readonly MarketSession[];
   refreshing: boolean;
   onRefresh: () => void;
 }>;
+
+const marketSessionLabels = {
+  BEFORE_MARKET: "장전",
+  REGULAR: "정규장",
+  AFTER_MARKET: "장후",
+} as const satisfies Readonly<Record<MarketSession, string>>;
 
 function totalOf(
   positions: readonly DashboardPosition[],
@@ -29,6 +37,7 @@ function totalOf(
 export function SummaryStrip({
   positions,
   quoteFetchedAt,
+  valuationSessions,
   refreshing,
   onRefresh,
 }: SummaryStripProps) {
@@ -36,6 +45,10 @@ export function SummaryStrip({
   const totalValuation = totalOf(positions, "valuation");
   const totalProfit = totalOf(positions, "unrealizedProfit");
   const quotedCount = positions.filter((position) => position.currentPrice !== null).length;
+  const valuationBasis =
+    valuationSessions.length === 0
+      ? "-"
+      : valuationSessions.map((session) => marketSessionLabels[session]).join(" · ");
 
   return (
     <section className={styles.summary} aria-labelledby="portfolio-summary">
@@ -61,6 +74,10 @@ export function SummaryStrip({
         <div>
           <dt>보유 종목</dt>
           <dd>{positions.length}개</dd>
+        </div>
+        <div>
+          <dt>평가 기준</dt>
+          <dd className={styles.sessionValue}>{valuationBasis}</dd>
         </div>
         <div>
           <dt>전체 매입액</dt>

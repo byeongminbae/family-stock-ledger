@@ -8,6 +8,7 @@ import {
   summarizeBrokerageTotals,
   summarizeOwnerTotals,
 } from "@/lib/domain/dashboard";
+import { MARKET_SESSIONS, type MarketSession } from "@/lib/domain/market-session";
 import { getNaverMarketPrices } from "@/lib/naver/client";
 
 import {
@@ -20,6 +21,10 @@ import {
 } from "./types";
 
 type QuotedPosition = Awaited<ReturnType<typeof mergeMarketQuotes>>[number];
+type MarketQuoteResult = Readonly<{
+  quotes: Readonly<Record<string, MarketQuote>>;
+  valuationSessions: readonly MarketSession[];
+}>;
 
 const ownerNames: ReadonlySet<string> = new Set(["병민", "할머니", "아빠"]);
 
@@ -30,13 +35,12 @@ function ownerNameOf(value: string): OwnerName {
   throw new Error(`지원하지 않는 소유주입니다: ${value}`);
 }
 
-async function fetchMarketQuotes(
-  itemCodes: readonly string[],
-): Promise<Readonly<Record<string, MarketQuote>>> {
-  if (itemCodes.length === 0) return {};
+async function fetchMarketQuotes(itemCodes: readonly string[]): Promise<MarketQuoteResult> {
+  if (itemCodes.length === 0) return { quotes: {}, valuationSessions: [] };
 
   const naverPrices = await getNaverMarketPrices(itemCodes);
   const quotes: Record<string, MarketQuote> = {};
+  const valuationSessions = new Set<MarketSession>();
   for (const [itemCode, price] of Object.entries(naverPrices)) {
     if (price !== null) {
       quotes[itemCode] = {
@@ -44,9 +48,13 @@ async function fetchMarketQuotes(
         currentPrice: price.price,
         quotedAt: price.localTradedAt,
       };
+      valuationSessions.add(price.session);
     }
   }
-  return quotes;
+  return {
+    quotes,
+    valuationSessions: MARKET_SESSIONS.filter((session) => valuationSessions.has(session)),
+  };
 }
 
 function ownerTotalsOf(
@@ -135,7 +143,7 @@ function brokerageGroupsOf(
 export async function loadDashboard(): Promise<DashboardSnapshot> {
   const base = await getBaseDashboardPositions();
   const uniqueCodes = [...new Set(base.map((position) => position.itemCode))];
-  const quotes = await fetchMarketQuotes(uniqueCodes);
+  const { quotes, valuationSessions } = await fetchMarketQuotes(uniqueCodes);
   const positions = mergeMarketQuotes(base, quotes);
   const quoteFetchedAt =
     positions
@@ -158,5 +166,6 @@ export async function loadDashboard(): Promise<DashboardSnapshot> {
       아빠: ownerTotalsOf(OWNER_NAMES[2], positions),
     },
     quoteFetchedAt,
+    valuationSessions,
   };
 }

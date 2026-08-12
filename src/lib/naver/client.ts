@@ -14,6 +14,21 @@ const formattedPriceSchema = z
   .regex(/^\d+(?:,\d{3})*$/)
   .transform((value) => value.replaceAll(",", ""));
 const tradingSessionTypeSchema = z.enum(MARKET_SESSIONS);
+const overMarketPriceInfoSchema = z.union([
+  z
+    .object({
+      localTradedAt: localTradedAtSchema,
+      overMarketStatus: z.literal("PREOPEN"),
+      overPrice: formattedPriceSchema,
+      tradingSessionType: z.literal(""),
+    })
+    .transform((value) => ({ ...value, tradingSessionType: "PREOPEN" as const })),
+  z.object({
+    localTradedAt: localTradedAtSchema,
+    overPrice: formattedPriceSchema,
+    tradingSessionType: tradingSessionTypeSchema,
+  }),
+]);
 const searchResponseSchema = z.object({
   isSuccess: z.literal(true),
   result: z.object({
@@ -40,13 +55,7 @@ const marketPriceResponseSchema = z.object({
         itemCode: itemCodeSchema,
         localTradedAt: localTradedAtSchema,
         marketStatus: z.string().min(1),
-        overMarketPriceInfo: z
-          .object({
-            localTradedAt: localTradedAtSchema,
-            overPrice: formattedPriceSchema,
-            tradingSessionType: tradingSessionTypeSchema,
-          })
-          .nullish(),
+        overMarketPriceInfo: overMarketPriceInfoSchema.nullish(),
         stockName: z.string().min(1),
       }),
     ),
@@ -95,6 +104,8 @@ function valuationSessionFor(
   currentTime: Date,
 ): MarketSession {
   switch (session) {
+    case "PREOPEN":
+      return "PREOPEN";
     case "REGULAR":
       return "REGULAR";
     case "BEFORE_MARKET":
@@ -210,15 +221,31 @@ async function fetchPriceBatch(itemCodes: readonly string[]): Promise<readonly N
       overMarketPriceInfo.localTradedAt,
       currentTime,
     );
-    const useOverMarketPrice = session === "BEFORE_MARKET" || session === "AFTER_MARKET";
-
-    return {
-      itemCode: item.itemCode,
-      localTradedAt: useOverMarketPrice ? overMarketPriceInfo.localTradedAt : item.localTradedAt,
-      marketStatus: item.marketStatus,
-      price: useOverMarketPrice ? overMarketPriceInfo.overPrice : item.closePriceRaw,
-      session,
-      stockName: item.stockName,
-    };
+    switch (session) {
+      case "PREOPEN":
+      case "REGULAR":
+        return {
+          itemCode: item.itemCode,
+          localTradedAt: item.localTradedAt,
+          marketStatus: item.marketStatus,
+          price: item.closePriceRaw,
+          session,
+          stockName: item.stockName,
+        };
+      case "BEFORE_MARKET":
+      case "AFTER_MARKET":
+        return {
+          itemCode: item.itemCode,
+          localTradedAt: overMarketPriceInfo.localTradedAt,
+          marketStatus: item.marketStatus,
+          price: overMarketPriceInfo.overPrice,
+          session,
+          stockName: item.stockName,
+        };
+      default: {
+        const unsupportedSession: never = session;
+        throw new RangeError(`지원하지 않는 거래 세션입니다: ${unsupportedSession}`);
+      }
+    }
   });
 }

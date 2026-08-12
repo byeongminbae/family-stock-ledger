@@ -207,10 +207,16 @@
 }
 
 .table thead th {
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  font-weight: 700;
+  border-bottom-color: color-mix(in srgb, var(--owner-color) 42%, var(--color-line-strong));
+  background: color-mix(in srgb, var(--owner-color) 8%, var(--color-surface-strong));
+  color: var(--color-text);
+  font-weight: 800;
   line-height: 1.35;
+}
+
+.table thead th[aria-sort] {
+  background: color-mix(in srgb, var(--owner-color) 15%, var(--color-surface-strong));
+  box-shadow: inset 0 calc(var(--subtotal-rule-width) * -1) 0 var(--owner-color);
 }
 
 .table thead th:first-child {

@@ -148,6 +148,45 @@ describe("Naver market price provider", () => {
     });
   });
 
+  it("uses the previous regular close during Naver pre-open", async () => {
+    // Given: Naver reports PREOPEN with an empty trading session before any new trade.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        jsonResponse({
+          isSuccess: true,
+          result: {
+            datas: [
+              {
+                closePriceRaw: "255500",
+                itemCode: "005930",
+                localTradedAt: "2026-08-12T15:30:00+09:00",
+                marketStatus: "CLOSE",
+                overMarketPriceInfo: {
+                  localTradedAt: "2026-08-13T07:32:54.680099+09:00",
+                  overMarketStatus: "PREOPEN",
+                  overPrice: "999,999",
+                  tradingSessionType: "",
+                },
+                stockName: "삼성전자",
+              },
+            ],
+          },
+        }),
+      ),
+    );
+
+    // When: the dashboard provider selects the current valuation price.
+    const prices = await getNaverMarketPrices(["005930"]);
+
+    // Then: PREOPEN uses the previous regular close and its original timestamp.
+    expect(prices["005930"]).toMatchObject({
+      localTradedAt: "2026-08-12T15:30:00+09:00",
+      price: "255500",
+      session: "PREOPEN",
+    });
+  });
+
   it("keeps the previous trading day's after-market price until 02:59:59 KST", async () => {
     // Given: Naver still reports Wednesday's closed after-market quote just before the cutoff.
     vi.useFakeTimers();

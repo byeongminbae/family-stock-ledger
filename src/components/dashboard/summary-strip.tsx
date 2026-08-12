@@ -13,10 +13,12 @@ type SummaryStripProps = Readonly<{
 }>;
 
 const marketSessionLabels = {
+  PREOPEN: "정규장",
   BEFORE_MARKET: "장전",
   REGULAR: "정규장",
   AFTER_MARKET: "장후",
 } as const satisfies Readonly<Record<MarketSession, string>>;
+const valuationBasisLabels = ["장전", "정규장", "장후"] as const;
 
 function totalOf(
   positions: readonly DashboardPosition[],
@@ -50,10 +52,13 @@ export function SummaryStrip({
       .filter((position) => position.currentPrice !== null)
       .map((position) => position.itemCode),
   ).size;
+  const activeValuationBasisLabels = new Set(
+    valuationSessions.map((session) => marketSessionLabels[session]),
+  );
   const valuationBasis =
-    valuationSessions.length === 0
+    activeValuationBasisLabels.size === 0
       ? "-"
-      : valuationSessions.map((session) => marketSessionLabels[session]).join(" · ");
+      : valuationBasisLabels.filter((label) => activeValuationBasisLabels.has(label)).join(" · ");
 
   return (
     <section className={styles.summary} aria-labelledby="portfolio-summary">

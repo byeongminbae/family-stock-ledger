@@ -3,8 +3,15 @@ import { z } from "zod";
 
 const NAVER_API_BASE_URL = "https://m.stock.naver.com/front-api";
 const PRICE_BATCH_SIZE = 50;
+const AFTER_MARKET_EXPIRY_OFFSET_MS = (24 + 3) * 60 * 60 * 1_000;
 
 const itemCodeSchema = z.string().regex(/^[0-9A-Z]{6}$/);
+const localTradedAtSchema = z.iso.datetime({ offset: true });
+const formattedPriceSchema = z
+  .string()
+  .regex(/^\d+(?:,\d{3})*$/)
+  .transform((value) => value.replaceAll(",", ""));
+const tradingSessionTypeSchema = z.enum(["REGULAR", "BEFORE_MARKET", "AFTER_MARKET"]);
 const searchResponseSchema = z.object({
   isSuccess: z.literal(true),
   result: z.object({
@@ -29,8 +36,15 @@ const marketPriceResponseSchema = z.object({
       z.object({
         closePriceRaw: z.string().regex(/^\d+$/),
         itemCode: itemCodeSchema,
-        localTradedAt: z.string().min(1),
+        localTradedAt: localTradedAtSchema,
         marketStatus: z.string().min(1),
+        overMarketPriceInfo: z
+          .object({
+            localTradedAt: localTradedAtSchema,
+            overPrice: formattedPriceSchema,
+            tradingSessionType: tradingSessionTypeSchema,
+          })
+          .nullish(),
         stockName: z.string().min(1),
       }),
     ),
@@ -69,6 +83,24 @@ export class NaverProviderError extends Error {
   constructor(cause?: unknown) {
     super("네이버 증권 정보를 불러오지 못했습니다.", { cause });
     this.name = "NaverProviderError";
+  }
+}
+
+function priceSourceForTradingSession(
+  session: z.infer<typeof tradingSessionTypeSchema>,
+  localTradedAt: string,
+  currentTime: Date,
+): "regular" | "overMarket" {
+  switch (session) {
+    case "REGULAR":
+      return "regular";
+    case "BEFORE_MARKET":
+      return "overMarket";
+    case "AFTER_MARKET": {
+      const tradingDate = localTradedAt.slice(0, 10);
+      const expiresAt = Date.parse(`${tradingDate}T00:00:00+09:00`) + AFTER_MARKET_EXPIRY_OFFSET_MS;
+      return currentTime.getTime() < expiresAt ? "overMarket" : "regular";
+    }
   }
 }
 
@@ -151,12 +183,25 @@ async function fetchPriceBatch(itemCodes: readonly string[]): Promise<readonly N
     })
     .json<unknown>();
   const parsed = marketPriceResponseSchema.parse(response);
+  const currentTime = new Date();
 
-  return parsed.result.datas.map((item) => ({
-    itemCode: item.itemCode,
-    localTradedAt: item.localTradedAt,
-    marketStatus: item.marketStatus,
-    price: item.closePriceRaw,
-    stockName: item.stockName,
-  }));
+  return parsed.result.datas.map((item) => {
+    const overMarketPriceInfo = item.overMarketPriceInfo;
+    const useOverMarketPrice =
+      overMarketPriceInfo !== null &&
+      overMarketPriceInfo !== undefined &&
+      priceSourceForTradingSession(
+        overMarketPriceInfo.tradingSessionType,
+        overMarketPriceInfo.localTradedAt,
+        currentTime,
+      ) === "overMarket";
+
+    return {
+      itemCode: item.itemCode,
+      localTradedAt: useOverMarketPrice ? overMarketPriceInfo.localTradedAt : item.localTradedAt,
+      marketStatus: item.marketStatus,
+      price: useOverMarketPrice ? overMarketPriceInfo.overPrice : item.closePriceRaw,
+      stockName: item.stockName,
+    };
+  });
 }

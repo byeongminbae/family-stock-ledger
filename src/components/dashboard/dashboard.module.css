@@ -289,8 +289,8 @@
 
 .brokerageTotalRow th,
 .brokerageTotalRow td {
-  border-top: 1px solid var(--color-brand);
-  background: var(--color-brand-soft);
+  border-top: 1px solid var(--owner-color);
+  background: color-mix(in srgb, var(--owner-color) 12%, var(--color-surface-strong));
   font-weight: 800;
 }
 
@@ -371,8 +371,8 @@
 }
 
 .brokerageTotals {
-  border-color: var(--color-brand);
-  background: var(--color-brand-soft);
+  border-color: var(--owner-color);
+  background: color-mix(in srgb, var(--owner-color) 12%, var(--color-surface-strong));
 }
 
 .ownerTotals {

@@ -14,11 +14,11 @@ type SummaryStripProps = Readonly<{
 
 const marketSessionLabels = {
   PREOPEN: "정규장",
-  PRE_MARKET: "장전",
-  REGULAR: "정규장",
-  AFTER_MARKET: "장후",
+  PRE_MARKET: "프리",
+  REGULAR_MARKET: "정규장",
+  AFTER_MARKET: "에프터",
 } as const satisfies Readonly<Record<MarketSession, string>>;
-const valuationBasisLabels = ["장전", "정규장", "장후"] as const;
+const valuationBasisLabels = ["프리", "정규장", "에프터"] as const;
 
 function totalOf(
   positions: readonly DashboardPosition[],

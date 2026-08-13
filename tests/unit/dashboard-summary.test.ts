@@ -28,7 +28,7 @@ describe("dashboard summary", () => {
     const summary = createElement(SummaryStrip, {
       positions: [],
       quoteFetchedAt: null,
-      valuationSessions: ["PREOPEN", "PRE_MARKET", "REGULAR", "AFTER_MARKET"],
+      valuationSessions: ["PREOPEN", "PRE_MARKET", "REGULAR_MARKET", "AFTER_MARKET"],
       refreshing: false,
       onRefresh: () => undefined,
     });
@@ -38,7 +38,7 @@ describe("dashboard summary", () => {
 
     // Then: the basis follows the holding count and uses Korean market names.
     expect(markup.indexOf("보유 종목")).toBeLessThan(markup.indexOf("평가 기준"));
-    expect(markup).toContain("장전 · 정규장 · 장후");
+    expect(markup).toContain("프리 · 정규장 · 에프터");
     expect(markup).not.toContain("개장 전");
   });
 
@@ -58,7 +58,7 @@ describe("dashboard summary", () => {
         },
       ],
       quoteFetchedAt: "2026-08-13T15:30:00+09:00",
-      valuationSessions: ["REGULAR"],
+      valuationSessions: ["REGULAR_MARKET"],
       refreshing: false,
       onRefresh: () => undefined,
     });

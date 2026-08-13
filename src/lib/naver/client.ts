@@ -106,14 +106,14 @@ function valuationSessionFor(
   switch (session) {
     case "PREOPEN":
       return "PREOPEN";
-    case "REGULAR":
-      return "REGULAR";
+    case "REGULAR_MARKET":
+      return "REGULAR_MARKET";
     case "PRE_MARKET":
       return "PRE_MARKET";
     case "AFTER_MARKET": {
       const tradingDate = localTradedAt.slice(0, 10);
       const expiresAt = Date.parse(`${tradingDate}T00:00:00+09:00`) + AFTER_MARKET_EXPIRY_OFFSET_MS;
-      return currentTime.getTime() < expiresAt ? "AFTER_MARKET" : "REGULAR";
+      return currentTime.getTime() < expiresAt ? "AFTER_MARKET" : "REGULAR_MARKET";
     }
     default: {
       const unsupportedSession: never = session;
@@ -211,7 +211,7 @@ async function fetchPriceBatch(itemCodes: readonly string[]): Promise<readonly N
         localTradedAt: item.localTradedAt,
         marketStatus: item.marketStatus,
         price: item.closePriceRaw,
-        session: "REGULAR",
+        session: "REGULAR_MARKET",
         stockName: item.stockName,
       };
     }
@@ -223,7 +223,7 @@ async function fetchPriceBatch(itemCodes: readonly string[]): Promise<readonly N
     );
     switch (session) {
       case "PREOPEN":
-      case "REGULAR":
+      case "REGULAR_MARKET":
         return {
           itemCode: item.itemCode,
           localTradedAt: item.localTradedAt,

@@ -62,7 +62,7 @@ describe("Naver market price provider", () => {
         localTradedAt: "2026-08-06T15:30:00+09:00",
         marketStatus: "CLOSE",
         price: "230500",
-        session: "REGULAR",
+        session: "REGULAR_MARKET",
         stockName: "삼성전자",
       },
     });
@@ -86,7 +86,7 @@ describe("Naver market price provider", () => {
                 overMarketPriceInfo: {
                   localTradedAt: "2026-08-12T08:50:00+09:00",
                   overPrice: "239,000",
-                  tradingSessionType: "REGULAR",
+                  tradingSessionType: "REGULAR_MARKET",
                 },
                 stockName: "삼성전자",
               },
@@ -134,7 +134,7 @@ describe("Naver market price provider", () => {
         localTradedAt: "2026-08-12T10:00:00+09:00",
         marketStatus: "OPEN",
         price: "240000",
-        session: "REGULAR",
+        session: "REGULAR_MARKET",
         stockName: "삼성전자",
       },
       "035420": {
@@ -223,7 +223,7 @@ describe("Naver market price provider", () => {
     expect(prices["005930"]).toMatchObject({
       localTradedAt: "2026-08-12T15:30:00+09:00",
       price: "255500",
-      session: "REGULAR",
+      session: "REGULAR_MARKET",
     });
   });
 
@@ -243,7 +243,7 @@ describe("Naver market price provider", () => {
     expect(prices["005930"]).toMatchObject({
       localTradedAt: "2026-08-14T15:30:00+09:00",
       price: "255500",
-      session: "REGULAR",
+      session: "REGULAR_MARKET",
     });
   });
 

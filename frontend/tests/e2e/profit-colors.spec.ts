@@ -42,7 +42,7 @@ interface TradeFixture {
 const createdTradeIds: Record<TradeFixture["side"], string[]> = { BUY: [], SELL: [] };
 
 async function createTrade(request: APIRequestContext, fixture: TradeFixture): Promise<void> {
-  const response = await request.post("/api/trades", {
+  const response = await request.post("/api/v1/trades", {
     data: {
       brokerageCode: "240",
       executedAt: fixture.executedAt,
@@ -58,15 +58,12 @@ async function createTrade(request: APIRequestContext, fixture: TradeFixture): P
   });
   expect(response.ok()).toBe(true);
   const payload: unknown = await response.json();
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("id" in payload) ||
-    typeof payload.id !== "string"
-  ) {
+  const data =
+    typeof payload === "object" && payload !== null && "data" in payload ? payload.data : null;
+  if (typeof data !== "object" || data === null || !("id" in data) || typeof data.id !== "string") {
     throw new Error("생성된 거래 ID를 읽지 못했습니다.");
   }
-  createdTradeIds[fixture.side].push(payload.id);
+  createdTradeIds[fixture.side].push(data.id);
 }
 
 test.beforeEach(async ({ request }) => {
@@ -97,7 +94,7 @@ test.afterEach(async ({ request }) => {
   for (const side of ["SELL", "BUY"] as const) {
     const ids = createdTradeIds[side];
     if (ids.length === 0) continue;
-    const response = await request.delete("/api/trades", { data: { ids, side } });
+    const response = await request.delete("/api/v1/trades", { data: { ids, side } });
     expect(response.ok()).toBe(true);
   }
 });

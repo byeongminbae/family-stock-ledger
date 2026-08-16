@@ -130,16 +130,16 @@
   overflow: hidden;
 }
 
-.ownerSection[data-owner="병민"] {
-  --owner-color: var(--color-owner-byeongmin);
+.ownerSection:nth-child(3n + 1) {
+  --owner-color: var(--color-owner-accent-1);
 }
 
-.ownerSection[data-owner="할머니"] {
-  --owner-color: var(--color-owner-grandmother);
+.ownerSection:nth-child(3n + 2) {
+  --owner-color: var(--color-owner-accent-2);
 }
 
-.ownerSection[data-owner="아빠"] {
-  --owner-color: var(--color-owner-father);
+.ownerSection:nth-child(3n) {
+  --owner-color: var(--color-owner-accent-3);
 }
 
 .ownerHeader {

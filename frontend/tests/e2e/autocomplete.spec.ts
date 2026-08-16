@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const stockSearchResponse = {
-  items: [
+  data: [
     {
       code: "005930",
       isEtf: false,
@@ -9,6 +9,8 @@ const stockSearchResponse = {
       name: "삼성전자",
     },
   ],
+  success: true,
+  timestamp: "2026-08-14T00:00:00",
 } as const;
 
 async function enterComposingText(
@@ -34,9 +36,26 @@ async function enterComposingText(
 }
 
 test.beforeEach(async ({ page }) => {
-  await page.route("**/api/stocks/search**", async (route) => {
+  await page.route("**/api/v1/stocks/search**", async (route) => {
     await route.fulfill({
       body: JSON.stringify(stockSearchResponse),
+      contentType: "application/json",
+      status: 200,
+    });
+  });
+  await page.route("**/api/v1/trades/preview", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        data: {
+          amount: "700000",
+          averageBuyPrice: null,
+          expectedProfit: null,
+          heldQuantity: "0",
+          quantityError: null,
+        },
+        success: true,
+        timestamp: "2026-08-14T00:00:00",
+      }),
       contentType: "application/json",
       status: 200,
     });
@@ -64,6 +83,7 @@ test("한글 종목 선택 뒤 거래 정수 필드는 비정수 입력을 무�
   const combobox = buyForm.getByRole("combobox", { name: /종목명/ });
   await combobox.fill("삼성");
   await buyForm.getByRole("option", { name: /삼성전자/ }).click();
+  await buyForm.getByLabel("증권사 (필수)").selectOption("240");
 
   const quantity = buyForm.getByLabel("매수 수량 (필수)");
   const unitPrice = buyForm.getByLabel("매수 당시 단가 (필수)");
@@ -125,7 +145,7 @@ test("히스토리 검색은 숫자 범위 없이 빠른 기간 선택과 하나
 
 test("히스토리 종목 검색은 외부 종목 검색 API 없이 로컬 목록만 연다", async ({ page }) => {
   let marketSearchCalls = 0;
-  await page.route("**/api/stocks/search**", async (route) => {
+  await page.route("**/api/v1/stocks/search**", async (route) => {
     marketSearchCalls += 1;
     await route.abort();
   });
@@ -157,8 +177,8 @@ test("새 검색 응답을 기다리는 Enter는 보이는 첫 종목을 선택�
 });
 
 test("검색 실패 상태에서도 combobox 연결과 안내를 유지한다", async ({ page }) => {
-  await page.unroute("**/api/stocks/search**");
-  await page.route("**/api/stocks/search**", async (route) => {
+  await page.unroute("**/api/v1/stocks/search**");
+  await page.route("**/api/v1/stocks/search**", async (route) => {
     await route.fulfill({ body: "{}", contentType: "application/json", status: 500 });
   });
 

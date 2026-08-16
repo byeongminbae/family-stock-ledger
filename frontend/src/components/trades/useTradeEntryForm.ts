@@ -1,34 +1,56 @@
 "use client";
 
-import Decimal from "decimal.js";
 import ky from "ky";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 
-import { formatInteger, multiplyIntegers, seoulDateTimeLocalNow } from "./format";
+import { seoulDateTimeLocalNow } from "./format";
 import { type StockSelection, sideLabel, type TradeSide } from "./types";
+
+const ownerIdSchema = z
+  .string()
+  .regex(/^[1-9]\d*$/, "소유주를 선택해 주세요.")
+  .refine((value) => Number(value) <= 32_767, "소유주를 선택해 주세요.");
 
 const inputSchema = z.object({
   brokerageCode: z.string().min(1, "증권사를 선택해 주세요."),
   executedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "거래 일시를 입력해 주세요."),
-  ownerId: z.string().regex(/^[1-3]$/, "소유주를 선택해 주세요."),
+  ownerId: ownerIdSchema,
   quantity: z.string().regex(/^[1-9]\d*$/, "수량은 1 이상의 정수여야 합니다."),
   unitPrice: z.string().regex(/^[1-9]\d*$/, "단가는 1원 이상의 정수여야 합니다."),
 });
 
-const responseSchema = z.discriminatedUnion("ok", [
-  z.object({ ok: z.literal(true), id: z.string() }),
+const tradeResponseSchema = z.discriminatedUnion("success", [
+  z.object({ success: z.literal(true), timestamp: z.string(), data: z.object({ id: z.string() }) }),
   z.object({
-    ok: z.literal(false),
+    success: z.literal(false),
+    timestamp: z.string(),
+    statusCode: z.string(),
     message: z.string(),
-    fieldErrors: z.record(z.string(), z.string()).optional(),
+    fieldErrors: z.record(z.string(), z.string()).nullable().optional(),
   }),
 ]);
 
-const averageSchema = z.object({
-  averageBuyPrice: z.string().nullable(),
-  heldQuantity: z.string().regex(/^\d+$/),
+const previewRequestSchema = z.object({
+  brokerageCode: z.string().regex(/^\d{3}$/),
+  itemCode: z.string().regex(/^[0-9A-Z]{6}$/),
+  ownerId: z.number().int().min(1).max(32_767),
+  quantity: z.string().regex(/^[1-9]\d*$/),
+  side: z.enum(["BUY", "SELL"]),
+  unitPrice: z.string().regex(/^[1-9]\d*$/),
+});
+
+const previewResponseSchema = z.object({
+  success: z.literal(true),
+  timestamp: z.string(),
+  data: z.object({
+    amount: z.string().regex(/^\d+$/),
+    averageBuyPrice: z.string().nullable(),
+    expectedProfit: z.string().nullable(),
+    heldQuantity: z.string().regex(/^\d+$/),
+    quantityError: z.string().nullable(),
+  }),
 });
 
 export type TradeFieldName =
@@ -58,6 +80,7 @@ export interface TradeEntryInitialValues {
 }
 
 export interface TradeEntryFormOptions {
+  readonly defaultOwnerId?: string | undefined;
   readonly side: TradeSide;
   readonly initialValues?: TradeEntryInitialValues | undefined;
   readonly tradeId?: string | undefined;
@@ -65,6 +88,7 @@ export interface TradeEntryFormOptions {
 }
 
 export function useTradeEntryForm({
+  defaultOwnerId,
   initialValues,
   onSaved,
   side,
@@ -74,7 +98,7 @@ export function useTradeEntryForm({
   const summaryRef = useRef<HTMLDivElement>(null);
   const [executedAt, setExecutedAt] = useState(initialValues?.executedAt ?? "");
   const [brokerageCode, setBrokerageCode] = useState(initialValues?.brokerageCode ?? "");
-  const [ownerId, setOwnerId] = useState(initialValues?.ownerId ?? "1");
+  const [ownerId, setOwnerId] = useState(initialValues?.ownerId ?? defaultOwnerId ?? "");
   const [stock, setStock] = useState<StockSelection | null>(initialValues?.stock ?? null);
   const [quantity, setQuantity] = useState(initialValues?.quantity ?? "");
   const [unitPrice, setUnitPrice] = useState(initialValues?.unitPrice ?? "");
@@ -82,8 +106,10 @@ export function useTradeEntryForm({
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "error" | null>(null);
-  const [average, setAverage] = useState<z.infer<typeof averageSchema> | null>(null);
-  const [averageUnavailable, setAverageUnavailable] = useState(false);
+  const [preview, setPreview] = useState<z.infer<typeof previewResponseSchema>["data"] | null>(
+    null,
+  );
+  const [previewUnavailable, setPreviewUnavailable] = useState(false);
   const editing = tradeId !== undefined;
 
   useEffect(() => {
@@ -91,37 +117,38 @@ export function useTradeEntryForm({
   }, [editing]);
 
   useEffect(() => {
-    if (editing || side !== "SELL" || brokerageCode === "" || stock === null) {
-      setAverage(null);
-      setAverageUnavailable(false);
+    const parsed = previewRequestSchema.safeParse({
+      brokerageCode,
+      itemCode: stock?.code,
+      ownerId: Number(ownerId),
+      quantity,
+      side,
+      unitPrice,
+    });
+    if (!parsed.success) {
+      setPreview(null);
+      setPreviewUnavailable(false);
       return;
     }
     const controller = new AbortController();
-    setAverage(null);
-    setAverageUnavailable(false);
+    setPreview(null);
+    setPreviewUnavailable(false);
     void ky
-      .get("/api/positions/average", {
-        searchParams: { ownerId, brokerageCode, itemCode: stock.code },
+      .post("/api/v1/trades/preview", {
+        json: parsed.data,
         signal: controller.signal,
         timeout: 8_000,
       })
       .json<unknown>()
-      .then((payload) => setAverage(averageSchema.parse(payload)))
+      .then((payload) => setPreview(previewResponseSchema.parse(payload).data))
       .catch(() => {
-        if (!controller.signal.aborted) setAverageUnavailable(true);
+        if (!controller.signal.aborted) setPreviewUnavailable(true);
       });
     return () => controller.abort();
-  }, [brokerageCode, editing, ownerId, side, stock]);
+  }, [brokerageCode, ownerId, quantity, side, stock, unitPrice]);
 
-  const amount = multiplyIntegers(quantity, unitPrice);
-  const expectedProfit =
-    amount !== null && average?.averageBuyPrice
-      ? new Decimal(unitPrice)
-          .minus(average.averageBuyPrice)
-          .times(quantity)
-          .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
-          .toFixed(0)
-      : null;
+  const amount = preview?.amount ?? null;
+  const expectedProfit = preview?.expectedProfit ?? null;
   const focusSummary = () => window.requestAnimationFrame(() => summaryRef.current?.focus());
   const fail = (text: string) => {
     setMessage(text);
@@ -148,22 +175,8 @@ export function useTradeEntryForm({
       }
     }
     if (stock === null) nextErrors.stock = "검색 결과에서 종목을 선택해 주세요.";
-    if (
-      !editing &&
-      side === "SELL" &&
-      average &&
-      /^\d+$/.test(quantity) &&
-      average.heldQuantity === "0"
-    ) {
-      nextErrors.quantity = "선택한 증권사에 보유 수량이\u00a0없습니다.";
-    } else if (
-      !editing &&
-      side === "SELL" &&
-      average &&
-      /^\d+$/.test(quantity) &&
-      BigInt(quantity) > BigInt(average.heldQuantity)
-    ) {
-      nextErrors.quantity = `보유 수량 ${formatInteger(average.heldQuantity)}주를 초과할 수 없습니다.`;
+    if (!editing && side === "SELL" && preview?.quantityError) {
+      nextErrors.quantity = preview.quantityError;
     }
     if (!parsed.success || stock === null || Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
@@ -187,15 +200,19 @@ export function useTradeEntryForm({
     };
     try {
       const response = editing
-        ? await ky.patch("/api/trades", {
+        ? await ky.patch("/api/v1/trades", {
             throwHttpErrors: false,
             timeout: 10_000,
             json: { id: tradeId, ...payload },
           })
-        : await ky.post("/api/trades", { throwHttpErrors: false, timeout: 10_000, json: payload });
-      const result = responseSchema.parse(await response.json<unknown>());
-      if (!response.ok || !result.ok) {
-        if (!result.ok && result.fieldErrors) {
+        : await ky.post("/api/v1/trades", {
+            throwHttpErrors: false,
+            timeout: 10_000,
+            json: payload,
+          });
+      const result = tradeResponseSchema.parse(await response.json<unknown>());
+      if (!response.ok || !result.success) {
+        if (!result.success && result.fieldErrors) {
           const mapped: TradeFieldErrors = {};
           for (const [name, text] of Object.entries(result.fieldErrors)) {
             const field = normalizeField(name);
@@ -203,7 +220,7 @@ export function useTradeEntryForm({
           }
           setErrors(mapped);
         }
-        fail(result.ok ? "저장하지 못했습니다. 다시 시도해 주세요." : result.message);
+        fail(result.success ? "저장하지 못했습니다. 다시 시도해 주세요." : result.message);
         return;
       }
       const label = sideLabel(side);
@@ -214,7 +231,7 @@ export function useTradeEntryForm({
         setQuantity("");
         setUnitPrice("");
       }
-      onSaved?.(result.id);
+      onSaved?.(result.data.id);
       router.refresh();
     } catch {
       fail(`저장하지 못했습니다. 입력값을 유지했으니 다시 시도해 주세요.`);
@@ -241,8 +258,8 @@ export function useTradeEntryForm({
     submitting,
     message,
     messageTone,
-    average,
-    averageUnavailable,
+    preview,
+    previewUnavailable,
     amount,
     expectedProfit,
     editing,

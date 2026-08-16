@@ -17,9 +17,9 @@
   --color-negative-soft: #ffedf0;
   --color-warning: #8a5708;
   --color-warning-soft: #fff4d8;
-  --color-owner-byeongmin: #3978bd;
-  --color-owner-grandmother: #b36a20;
-  --color-owner-father: #2b806e;
+  --color-owner-accent-1: #3978bd;
+  --color-owner-accent-2: #b36a20;
+  --color-owner-accent-3: #2b806e;
   --focus-ring: #256fd1;
   --shadow-header: 0 1px 8px rgb(24 32 45 / 6%);
   --shadow-popover: 0 14px 36px rgb(24 32 45 / 14%);
@@ -468,6 +468,10 @@ textarea.control {
   resize: vertical;
 }
 
+.text-nowrap {
+  white-space: nowrap;
+}
+
 .field {
   display: grid;
   min-width: 0;
@@ -640,22 +644,6 @@ textarea.control {
   border-color: var(--color-brand);
   background: var(--color-brand-soft);
   color: var(--color-brand);
-}
-
-.owner-rail {
-  border-left: var(--owner-rail-width) solid var(--owner-color, var(--color-brand));
-}
-
-.owner-rail--byeongmin {
-  --owner-color: var(--color-owner-byeongmin);
-}
-
-.owner-rail--grandmother {
-  --owner-color: var(--color-owner-grandmother);
-}
-
-.owner-rail--father {
-  --owner-color: var(--color-owner-father);
 }
 
 .empty-state {

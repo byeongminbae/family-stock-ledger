@@ -39,19 +39,17 @@ async function addTrade(
   await form.getByLabel(`${side} 당시 단가 (필수)`).fill(unitPrice);
   const responsePromise = page.waitForResponse(
     (response) =>
-      response.request().method() === "POST" && new URL(response.url()).pathname === "/api/trades",
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/v1/trades",
   );
   await form.getByRole("button", { name: `${side} 기록 저장` }).click();
   const payload: unknown = await (await responsePromise).json();
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("id" in payload) ||
-    typeof payload.id !== "string"
-  ) {
+  const data =
+    typeof payload === "object" && payload !== null && "data" in payload ? payload.data : null;
+  if (typeof data !== "object" || data === null || !("id" in data) || typeof data.id !== "string") {
     throw new Error("생성된 거래 ID를 읽을 수 없습니다.");
   }
-  createdTradeIds[side === "매수" ? "BUY" : "SELL"].push(payload.id);
+  createdTradeIds[side === "매수" ? "BUY" : "SELL"].push(data.id);
   await expect(form.getByText(`${side} 기록이 저장되었습니다.`)).toBeVisible();
 }
 
@@ -75,9 +73,13 @@ function editAction(row: Locator): Locator {
 test.beforeEach(async ({ page }) => {
   createdTradeIds.BUY = [];
   createdTradeIds.SELL = [];
-  await page.route("**/api/stocks/search**", async (route) => {
+  await page.route("**/api/v1/stocks/search**", async (route) => {
     await route.fulfill({
-      body: JSON.stringify(stockSearchResponse),
+      body: JSON.stringify({
+        data: stockSearchResponse.items,
+        success: true,
+        timestamp: "2026-08-14T00:00:00",
+      }),
       contentType: "application/json",
       status: 200,
     });
@@ -88,7 +90,7 @@ test.afterEach(async ({ request }) => {
   for (const side of ["SELL", "BUY"] as const) {
     const ids = createdTradeIds[side];
     if (ids.length === 0) continue;
-    const response = await request.delete("/api/trades", { data: { ids, side } });
+    const response = await request.delete("/api/v1/trades", { data: { ids, side } });
     expect(response.ok()).toBe(true);
   }
 });

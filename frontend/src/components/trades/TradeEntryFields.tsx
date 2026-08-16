@@ -1,11 +1,11 @@
 import { Button } from "@/components/ui/button";
-import type { Brokerage } from "@/lib/domain/brokerages";
+import type { Brokerage, Owner } from "@/lib/api-contracts";
 
 import { formatInteger, formatWon, numericSign } from "./format";
 import { isIntegerDraft } from "./integer-input";
 import { StockCombobox } from "./StockCombobox";
 import styles from "./trade-entry-form.module.css";
-import { OWNERS, sideLabel, type TradeSide } from "./types";
+import { sideLabel, type TradeSide } from "./types";
 import type { TradeFieldName, useTradeEntryForm } from "./useTradeEntryForm";
 
 interface TradeEntryFieldsProps {
@@ -14,6 +14,7 @@ interface TradeEntryFieldsProps {
   readonly form: ReturnType<typeof useTradeEntryForm>;
   readonly formId: string;
   readonly onCancel?: () => void;
+  readonly owners: readonly Owner[];
   readonly side: TradeSide;
   readonly submitLabel: string;
 }
@@ -24,6 +25,7 @@ export function TradeEntryFields({
   form,
   formId,
   onCancel,
+  owners,
   side,
   submitLabel,
 }: TradeEntryFieldsProps) {
@@ -65,6 +67,7 @@ export function TradeEntryFields({
             id={id("executed-at")}
             onChange={(event) => form.setExecutedAt(event.target.value)}
             required
+            lang="ko-KR"
             type="datetime-local"
             value={form.executedAt}
           />
@@ -96,7 +99,7 @@ export function TradeEntryFields({
             onChange={(event) => form.setOwnerId(event.target.value)}
             value={form.ownerId}
           >
-            {OWNERS.map((owner) => (
+            {owners.map((owner) => (
               <option key={owner.id} value={owner.id}>
                 {owner.name}
               </option>
@@ -187,17 +190,17 @@ export function TradeEntryFields({
               <small>저장 시 거래 시각 순으로 이 매도와 이후 손익을 다시 계산합니다.</small>
             ) : (
               <output className={`money${expectedProfitClass ? ` ${expectedProfitClass}` : ""}`}>
-                {form.averageUnavailable
+                {form.previewUnavailable
                   ? "조회 실패"
                   : form.expectedProfit === null
                     ? "-"
                     : formatWon(form.expectedProfit)}
               </output>
             )}
-            {!form.editing && form.average ? (
+            {!form.editing && form.preview ? (
               <small>
-                보유 {formatInteger(form.average.heldQuantity)}주 · 평균{" "}
-                {form.average.averageBuyPrice ? formatWon(form.average.averageBuyPrice) : "-"}
+                보유 {formatInteger(form.preview.heldQuantity)}주 · 평균{" "}
+                {form.preview.averageBuyPrice ? formatWon(form.preview.averageBuyPrice) : "-"}
               </small>
             ) : null}
           </div>

@@ -7,13 +7,7 @@ import styles from "./dashboard.module.css";
 import { PositionCards } from "./position-cards";
 import { PositionTable } from "./position-table";
 import { sortPositions } from "./sort";
-import type {
-  BrokeragePositionGroup,
-  OwnerName,
-  OwnerTotals,
-  SortDirection,
-  SortField,
-} from "./types";
+import type { BrokeragePositionGroup, OwnerTotals, SortDirection, SortField } from "./types";
 
 const sortOptions: readonly Readonly<{
   value: SortField;
@@ -31,7 +25,7 @@ const sortOptions: readonly Readonly<{
 ];
 
 type OwnerSectionProps = Readonly<{
-  ownerName: OwnerName;
+  ownerName: string;
   groups: readonly BrokeragePositionGroup[];
   totals: OwnerTotals;
 }>;
@@ -58,7 +52,6 @@ export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
     () => sortedGroups(groups, sortField, sortDirection),
     [groups, sortDirection, sortField],
   );
-  const positionCount = groups.reduce((total, group) => total + group.positions.length, 0);
   const headingId = `owner-${ownerName}`;
   const activeLabel = sortOptions.find((option) => option.value === sortField)?.label ?? "매입액";
 
@@ -118,7 +111,7 @@ export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
         정렬했습니다.
       </p>
 
-      {positionCount === 0 ? (
+      {totals.stockCount === 0 ? (
         <div className={styles.ownerEmpty}>
           <p>현재 보유 중인 종목이 없습니다.</p>
           <Link className="button button--secondary" href="/record">

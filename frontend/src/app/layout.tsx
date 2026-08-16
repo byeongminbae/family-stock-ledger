@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     default: "대시보드 | 주식 매매일지",
     template: "%s | 주식 매매일지",
   },
-  description: "병민, 할머니, 아빠의 국내 주식 매매 기록과 보유 현황을 확인합니다.",
+  description: "가족의 국내 주식 매매 기록과 보유 현황을 확인합니다.",
 };
 
 export const viewport: Viewport = {

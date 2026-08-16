@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { StatusMessage } from "@/components/ui/status-message";
-import type { Brokerage } from "@/lib/domain/brokerages";
+import type { Brokerage, Owner } from "@/lib/api-contracts";
 
 import { TradeDeleteConfirmationDialog } from "./TradeDeleteConfirmationDialog";
 import { TradeEditDialog } from "./TradeEditDialog";
@@ -19,6 +19,7 @@ interface TradeHistoryProps {
   readonly rows: readonly TradeHistoryRow[];
   readonly total: number;
   readonly hasFilters?: boolean;
+  readonly owners: readonly Owner[];
 }
 
 export function TradeHistory({
@@ -27,6 +28,7 @@ export function TradeHistory({
   rows,
   total,
   hasFilters = false,
+  owners,
 }: TradeHistoryProps) {
   const label = sideLabel(side);
   const deletion = useTradeDeletion({ rows, side });
@@ -138,6 +140,7 @@ export function TradeHistory({
         onCancel={closeEdit}
         onSaved={savedEdit}
         open={editingRow !== null}
+        owners={owners}
         row={editingRow}
         side={side}
       />

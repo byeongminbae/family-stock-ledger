@@ -1,6 +1,6 @@
 "use client";
 
-import type { Brokerage } from "@/lib/domain/brokerages";
+import type { Brokerage, Owner } from "@/lib/api-contracts";
 
 import { TradeEntryFields } from "./TradeEntryFields";
 import styles from "./trade-entry-form.module.css";
@@ -9,13 +9,18 @@ import { useTradeEntryForm } from "./useTradeEntryForm";
 
 interface TradeEntryFormProps {
   readonly brokerages: readonly Brokerage[];
+  readonly owners: readonly Owner[];
   readonly side: TradeSide;
   readonly onSaved?: ((tradeId: string) => void) | undefined;
 }
 
-export function TradeEntryForm({ brokerages, side, onSaved }: TradeEntryFormProps) {
+export function TradeEntryForm({ brokerages, owners, side, onSaved }: TradeEntryFormProps) {
   const label = sideLabel(side);
-  const form = useTradeEntryForm({ side, onSaved });
+  const form = useTradeEntryForm({
+    defaultOwnerId: owners[0]?.id.toString() ?? "",
+    side,
+    onSaved,
+  });
 
   return (
     <section className={`panel ${styles.section}`} aria-labelledby={`${side}-entry-heading`}>
@@ -30,6 +35,7 @@ export function TradeEntryForm({ brokerages, side, onSaved }: TradeEntryFormProp
         brokerages={brokerages}
         form={form}
         formId={`${side}-create`}
+        owners={owners}
         side={side}
         submitLabel={`${label} 기록 저장`}
       />

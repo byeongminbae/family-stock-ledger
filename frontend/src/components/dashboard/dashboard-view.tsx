@@ -7,7 +7,7 @@ import { useTransition } from "react";
 import styles from "./dashboard.module.css";
 import { OwnerSection } from "./owner-section";
 import { SummaryStrip } from "./summary-strip";
-import { type DashboardSnapshot, OWNER_NAMES } from "./types";
+import type { DashboardSnapshot } from "./types";
 
 type DashboardViewProps = Readonly<{
   snapshot: DashboardSnapshot;
@@ -38,7 +38,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
       </header>
 
       <SummaryStrip
-        positions={snapshot.positions}
+        totals={snapshot.summaryTotals}
         quoteFetchedAt={snapshot.quoteFetchedAt}
         valuationSessions={snapshot.valuationSessions}
         refreshing={refreshing}
@@ -58,12 +58,12 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
       ) : null}
 
       <div className={styles.ownerStack} aria-busy={refreshing}>
-        {OWNER_NAMES.map((ownerName) => (
+        {snapshot.owners.map((owner) => (
           <OwnerSection
-            key={ownerName}
-            ownerName={ownerName}
-            groups={snapshot.brokerageGroups[ownerName]}
-            totals={snapshot.ownerTotals[ownerName]}
+            key={owner.id}
+            ownerName={owner.name}
+            groups={owner.brokerageGroups}
+            totals={owner.totals}
           />
         ))}
       </div>

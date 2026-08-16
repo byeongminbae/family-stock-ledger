@@ -1,4 +1,4 @@
-import { OWNERS } from "./types";
+import type { Owner } from "@/lib/api-contracts";
 
 export const BASE_FILTER_KEYS = ["from", "to", "q", "ownerId", "brokerageCode"] as const;
 
@@ -10,8 +10,8 @@ export const FILTER_LABELS: Readonly<Record<string, string>> = {
   brokerageCode: "증권사",
 };
 
-export const ownerFilterName = (value: string): string =>
-  OWNERS.find((owner) => String(owner.id) === value)?.name ?? value;
+export const ownerFilterName = (owners: readonly Owner[], value: string): string =>
+  owners.find((owner) => String(owner.id) === value)?.name ?? value;
 
 export const brokerageFilterName = (
   brokerages: readonly { readonly code: string; readonly name: string }[],

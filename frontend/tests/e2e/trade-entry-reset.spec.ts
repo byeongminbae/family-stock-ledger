@@ -7,34 +7,64 @@ if (process.env.PLAYWRIGHT_BASE_URL === undefined) {
 const scenarios = [{ label: "매수" }, { label: "매도" }] as const;
 
 test.beforeEach(async ({ page }) => {
-  await page.route("**/api/stocks/search**", async (route) => {
+  await page.route("**/api/v1/stocks/search**", async (route) => {
     await route.fulfill({
       body: JSON.stringify({
-        items: [{ code: "005930", isEtf: false, market: "KOSPI", name: "삼성전자" }],
+        data: [{ code: "005930", isEtf: false, market: "KOSPI", name: "삼성전자" }],
+        success: true,
+        timestamp: "2026-08-14T00:00:00",
       }),
       contentType: "application/json",
       status: 200,
     });
   });
-  await page.route("**/api/positions/average**", async (route) => {
-    const brokerageCode = new URL(route.request().url()).searchParams.get("brokerageCode");
-    const hasPosition = brokerageCode !== "264";
+  await page.route("**/api/v1/trades/preview", async (route) => {
+    const hasPosition = !route.request().postData()?.includes('"brokerageCode":"264"');
     await route.fulfill({
       body: JSON.stringify({
-        averageBuyPrice: hasPosition ? "70000" : null,
-        heldQuantity: hasPosition ? "10" : "0",
+        data: {
+          amount: hasPosition ? "777" : "70000",
+          averageBuyPrice: hasPosition ? "70000" : null,
+          expectedProfit: hasPosition ? "-222" : null,
+          heldQuantity: hasPosition ? "10" : "0",
+          quantityError: hasPosition ? null : "선택한 증권사에 보유 수량이\u00a0없습니다.",
+        },
+        success: true,
+        timestamp: "2026-08-14T00:00:00",
       }),
       contentType: "application/json",
       status: 200,
     });
   });
-  await page.route("**/api/trades", async (route) => {
+  await page.route("**/api/v1/trades", async (route) => {
     await route.fulfill({
-      body: JSON.stringify({ id: "1", ok: true }),
+      body: JSON.stringify({
+        data: { id: "1" },
+        success: true,
+        timestamp: "2026-08-14T00:00:00",
+      }),
       contentType: "application/json",
       status: 200,
     });
   });
+});
+
+test("매도 입력은 preview 응답의 금액과 예상 손익을 표시한다", async ({ page }) => {
+  // Given: a sell form with a selected stock and valid numeric inputs.
+  await page.goto("/record");
+  const form = page.getByRole("region", { name: "매도 기록 추가" });
+  const combobox = form.getByRole("combobox", { name: /종목명/ });
+  await combobox.fill("삼성");
+  await form.getByRole("option", { name: /삼성전자/ }).click();
+  await form.getByLabel("증권사 (필수)").selectOption("240");
+  await form.getByLabel("매도 수량 (필수)").fill("1");
+
+  // When: the unit price completes a preview request.
+  await form.getByLabel("매도 당시 단가 (필수)").fill("70000");
+
+  // Then: the server-provided values, not a browser calculation, are rendered.
+  await expect(form.getByText("777원", { exact: true })).toBeVisible();
+  await expect(form.getByText("-222원", { exact: true })).toBeVisible();
 });
 
 for (const scenario of scenarios) {
@@ -136,7 +166,7 @@ test("매수하지 않은 증권사에서는 매도 저장을 막는다", async 
   await expect(sellForm.getByText(/보유 0주 · 평균\s+-/)).toBeVisible();
   let tradeRequestCount = 0;
   page.on("request", (request) => {
-    if (request.method() === "POST" && request.url().endsWith("/api/trades")) {
+    if (request.method() === "POST" && request.url().endsWith("/api/v1/trades")) {
       tradeRequestCount += 1;
     }
   });

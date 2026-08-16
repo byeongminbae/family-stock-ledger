@@ -15,7 +15,9 @@ import styles from "./stock-combobox.module.css";
 import type { StockSelection } from "./types";
 
 const searchResponseSchema = z.object({
-  items: z.array(
+  success: z.literal(true),
+  timestamp: z.string(),
+  data: z.array(
     z.object({
       code: z.string().regex(/^[0-9A-Z]{6}$/),
       name: z.string().min(1),
@@ -64,7 +66,7 @@ export function StockCombobox({ value, onChange, error, disabled = false }: Stoc
       setState(retryKey > 0 ? "refreshing" : "loading");
       try {
         const payload: unknown = await ky
-          .get("/api/stocks/search", {
+          .get("/api/v1/stocks/search", {
             searchParams: { q: trimmed },
             signal: controller.signal,
             timeout: 8_000,
@@ -72,8 +74,8 @@ export function StockCombobox({ value, onChange, error, disabled = false }: Stoc
           .json();
         if (controller.signal.aborted || requestId !== requestSequenceRef.current) return;
         const parsed = searchResponseSchema.parse(payload);
-        setItems(parsed.items);
-        setActiveIndex(parsed.items.length > 0 ? 0 : -1);
+        setItems(parsed.data);
+        setActiveIndex(parsed.data.length > 0 ? 0 : -1);
         setOpen(true);
         setState("ready");
       } catch (error) {

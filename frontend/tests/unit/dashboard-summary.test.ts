@@ -3,30 +3,18 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { SummaryStrip } from "../../src/components/dashboard/summary-strip";
-import type { DashboardPosition } from "../../src/components/dashboard/types";
-
-const samsungPosition: DashboardPosition = {
-  ownerId: 1,
-  ownerName: "병민",
-  brokerageCode: "240",
-  brokerageName: "삼성증권",
-  itemCode: "005930",
-  stockName: "삼성전자",
-  heldQuantity: "1",
-  averageBuyPrice: "70000",
-  costBasis: "70000",
-  portfolioWeight: "100",
-  currentPrice: "80000",
-  valuation: "80000",
-  unrealizedProfit: "10000",
-  returnRate: "14.2857",
-};
 
 describe("dashboard summary", () => {
   it("shows the Korean market sessions immediately after the holding count", () => {
     // Given: the evaluated positions use every supported market session.
     const summary = createElement(SummaryStrip, {
-      positions: [],
+      totals: {
+        stockCount: 0,
+        quotedStockCount: 0,
+        costBasis: "0",
+        valuation: null,
+        unrealizedProfit: null,
+      },
       quoteFetchedAt: null,
       valuationSessions: ["PREOPEN", "PRE_MARKET", "REGULAR_MARKET", "AFTER_MARKET"],
       refreshing: false,
@@ -45,18 +33,13 @@ describe("dashboard summary", () => {
   it("counts each stock once across owners and brokerages", () => {
     // Given: two owners hold Samsung Electronics across four brokerage positions.
     const summary = createElement(SummaryStrip, {
-      positions: [
-        samsungPosition,
-        { ...samsungPosition, brokerageCode: "264", brokerageName: "키움증권" },
-        { ...samsungPosition, ownerId: 2, ownerName: "할머니" },
-        {
-          ...samsungPosition,
-          ownerId: 2,
-          ownerName: "할머니",
-          brokerageCode: "264",
-          brokerageName: "키움증권",
-        },
-      ],
+      totals: {
+        stockCount: 1,
+        quotedStockCount: 1,
+        costBasis: "280000",
+        valuation: "320000",
+        unrealizedProfit: "40000",
+      },
       quoteFetchedAt: "2026-08-13T15:30:00+09:00",
       valuationSessions: ["REGULAR_MARKET"],
       refreshing: false,

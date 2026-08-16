@@ -12,25 +12,42 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - /volume1/docker/family-stock-ledger/volume:/var/lib/postgresql/data
-      # The official image runs init scripts only when PGDATA is a fresh, empty volume.
-      # Keeping an existing volume means schema.sql is intentionally not run again.
-      - ./schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
 
-  app:
+  backend:
     build:
-      context: .
+      context: ./backend
       dockerfile: Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: "postgresql://${POSTGRES_USER:-sample_user}:${POSTGRES_PASSWORD:-sample_password}@db:5432/${POSTGRES_DB:-family_stock_ledger}"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://db:5432/${POSTGRES_DB:-family_stock_ledger}"
+      SPRING_DATASOURCE_USERNAME: "${POSTGRES_USER:-sample_user}"
+      SPRING_DATASOURCE_PASSWORD: "${POSTGRES_PASSWORD:-sample_password}"
+      FLYWAY_BASELINE_ON_MIGRATE: "${FLYWAY_BASELINE_ON_MIGRATE:-true}"
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/api/v1/brokerages"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      INTERNAL_API_BASE_URL: "http://backend:8080"
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
     depends_on:
-      db:
+      backend:
         condition: service_healthy
     ports:
       - "${APP_PORT:-3000}:3000"

@@ -1,13 +1,14 @@
 import { useRef, useState } from "react";
-import type { Brokerage } from "@/lib/domain/brokerages";
+import type { Brokerage, Owner } from "@/lib/api-contracts";
 import { HistoryStockCombobox } from "./HistoryStockCombobox";
 import { periodRange } from "./history-date-range";
 import { PERIOD_PRESETS } from "./history-filter-config";
 import styles from "./history-filters.module.css";
-import { OWNERS, type StockSelection } from "./types";
+import type { StockSelection } from "./types";
 
 interface HistoryFilterFieldsProps {
   readonly brokerages: readonly Brokerage[];
+  readonly owners: readonly Owner[];
   readonly stocks: readonly StockSelection[];
   readonly value: (key: string) => string;
 }
@@ -67,6 +68,7 @@ function HistoryDateRange({ value }: Pick<HistoryFilterFieldsProps, "value">) {
             id="filter-from"
             name="from"
             ref={fromInput}
+            lang="ko-KR"
             type="date"
             value={from}
             onChange={(event) => {
@@ -82,6 +84,7 @@ function HistoryDateRange({ value }: Pick<HistoryFilterFieldsProps, "value">) {
             className="control"
             id="filter-to"
             name="to"
+            lang="ko-KR"
             type="date"
             value={to}
             onChange={(event) => {
@@ -95,7 +98,12 @@ function HistoryDateRange({ value }: Pick<HistoryFilterFieldsProps, "value">) {
   );
 }
 
-export function HistoryFilterFields({ brokerages, stocks, value }: HistoryFilterFieldsProps) {
+export function HistoryFilterFields({
+  brokerages,
+  owners,
+  stocks,
+  value,
+}: HistoryFilterFieldsProps) {
   return (
     <>
       <HistoryDateRange value={value} />
@@ -111,7 +119,7 @@ export function HistoryFilterFields({ brokerages, stocks, value }: HistoryFilter
           defaultValue={value("ownerId")}
         >
           <option value="">전체</option>
-          {OWNERS.map((owner) => (
+          {owners.map((owner) => (
             <option key={owner.id} value={owner.id}>
               {owner.name}
             </option>

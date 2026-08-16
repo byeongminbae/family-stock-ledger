@@ -6,12 +6,17 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: frontend
+            context: ./frontend
+          - service: backend
+            context: ./backend
     permissions:
       contents: read
       packages: write
@@ -46,12 +51,13 @@ jobs:
           tags: |
             type=sha,format=long,prefix=
             type=raw,value=latest,enable={{is_default_branch}}
+          images: ${{ env.REGISTRY }}/${{ github.repository }}-${{ matrix.service }}
 
       - name: Build and push Docker image
         id: build-and-push
         uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
         with:
-          context: .
+          context: ${{ matrix.context }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

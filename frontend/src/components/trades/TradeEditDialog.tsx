@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Brokerage } from "@/lib/domain/brokerages";
+import type { Brokerage, Owner } from "@/lib/api-contracts";
 
 import { isoInstantToSeoulDateTimeLocal } from "./format";
 import { TradeEntryFields } from "./TradeEntryFields";
@@ -12,6 +12,7 @@ import { useTradeEntryForm } from "./useTradeEntryForm";
 interface TradeEditDialogProps {
   readonly brokerages: readonly Brokerage[];
   readonly open: boolean;
+  readonly owners: readonly Owner[];
   readonly row: TradeHistoryRow | null;
   readonly side: TradeSide;
   readonly onCancel: () => void;
@@ -21,12 +22,13 @@ interface TradeEditDialogProps {
 interface TradeEditFormProps {
   readonly brokerages: readonly Brokerage[];
   readonly onCancel: () => void;
+  readonly owners: readonly Owner[];
   readonly row: TradeHistoryRow;
   readonly side: TradeSide;
   readonly onSaved: () => void;
 }
 
-function TradeEditForm({ brokerages, onCancel, onSaved, row, side }: TradeEditFormProps) {
+function TradeEditForm({ brokerages, onCancel, onSaved, owners, row, side }: TradeEditFormProps) {
   const label = sideLabel(side);
   const form = useTradeEntryForm({
     side,
@@ -54,6 +56,7 @@ function TradeEditForm({ brokerages, onCancel, onSaved, row, side }: TradeEditFo
       form={form}
       formId={`${side}-edit-${row.id}`}
       onCancel={onCancel}
+      owners={owners}
       side={side}
       submitLabel={`${label} 기록 수정`}
     />
@@ -65,6 +68,7 @@ export function TradeEditDialog({
   onCancel,
   onSaved,
   open,
+  owners,
   row,
   side,
 }: TradeEditDialogProps) {
@@ -105,6 +109,7 @@ export function TradeEditDialog({
             key={row.id}
             onCancel={onCancel}
             onSaved={onSaved}
+            owners={owners}
             row={row}
             side={side}
           />

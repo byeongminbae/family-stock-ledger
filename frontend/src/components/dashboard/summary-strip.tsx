@@ -1,11 +1,10 @@
-import Decimal from "decimal.js";
-import type { MarketSession } from "@/lib/domain/market-session";
+import type { MarketSession } from "@/lib/api-contracts";
 import styles from "./dashboard.module.css";
 import { formatQuoteTime, formatSignedWon, formatWon } from "./format";
-import type { DashboardPosition } from "./types";
+import type { DashboardSummaryTotals } from "./types";
 
 type SummaryStripProps = Readonly<{
-  positions: readonly DashboardPosition[];
+  totals: DashboardSummaryTotals;
   quoteFetchedAt: string | null;
   valuationSessions: readonly MarketSession[];
   refreshing: boolean;
@@ -20,38 +19,14 @@ const marketSessionLabels = {
 } as const satisfies Readonly<Record<MarketSession, string>>;
 const valuationBasisLabels = ["프리", "정규장", "에프터"] as const;
 
-function totalOf(
-  positions: readonly DashboardPosition[],
-  field: "costBasis" | "valuation" | "unrealizedProfit",
-): string | null {
-  if (field !== "costBasis" && positions.some((position) => position[field] === null)) {
-    return null;
-  }
-
-  return positions
-    .reduce((total, position) => {
-      const value = position[field];
-      return value === null ? total : total.plus(value);
-    }, new Decimal(0))
-    .toString();
-}
-
 export function SummaryStrip({
-  positions,
+  totals,
   quoteFetchedAt,
   valuationSessions,
   refreshing,
   onRefresh,
 }: SummaryStripProps) {
-  const totalCostBasis = totalOf(positions, "costBasis");
-  const totalValuation = totalOf(positions, "valuation");
-  const totalProfit = totalOf(positions, "unrealizedProfit");
-  const stockCount = new Set(positions.map((position) => position.itemCode)).size;
-  const quotedCount = new Set(
-    positions
-      .filter((position) => position.currentPrice !== null)
-      .map((position) => position.itemCode),
-  ).size;
+  const { costBasis, quotedStockCount, stockCount, unrealizedProfit, valuation } = totals;
   const activeValuationBasisLabels = new Set(
     valuationSessions.map((session) => marketSessionLabels[session]),
   );
@@ -66,7 +41,7 @@ export function SummaryStrip({
         <div>
           <h2 id="portfolio-summary">전체 보유 현황</h2>
           <p>
-            {formatQuoteTime(quoteFetchedAt)} · {quotedCount}/{stockCount}개 종목 가격 확인
+            {formatQuoteTime(quoteFetchedAt)} · {quotedStockCount}/{stockCount}개 종목 가격 확인
           </p>
         </div>
         <button
@@ -91,28 +66,28 @@ export function SummaryStrip({
         </div>
         <div>
           <dt>전체 매입액</dt>
-          <dd className="money">{formatWon(totalCostBasis)}</dd>
+          <dd className="money">{formatWon(costBasis)}</dd>
         </div>
         <div>
           <dt>전체 평가액</dt>
-          <dd className="money">{formatWon(totalValuation)}</dd>
+          <dd className="money">{formatWon(valuation)}</dd>
         </div>
         <div>
           <dt>평가 손익</dt>
           <dd
             className={`${styles.profitValue} ${
-              totalProfit === null || new Decimal(totalProfit).isZero()
+              unrealizedProfit === null || unrealizedProfit === "0"
                 ? ""
-                : new Decimal(totalProfit).isPositive()
+                : !unrealizedProfit.startsWith("-")
                   ? "positive"
                   : "negative"
             }`}
           >
-            {formatSignedWon(totalProfit)}
+            {formatSignedWon(unrealizedProfit)}
           </dd>
         </div>
       </dl>
-      {quotedCount < stockCount && stockCount > 0 ? (
+      {quotedStockCount < stockCount && stockCount > 0 ? (
         <p className={styles.quoteNotice} role="status">
           일부 가격을 불러오지 못해 전체 평가액과 평가 손익을 계산하지 않았습니다. DB 기반 보유
           정보는 그대로 표시합니다.

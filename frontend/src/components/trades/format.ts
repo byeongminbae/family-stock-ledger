@@ -37,13 +37,6 @@ export const numericSign = (value: string): -1 | 0 | 1 | null => {
   return decimal.isNegative() ? -1 : 1;
 };
 
-export const multiplyIntegers = (left: string, right: string): string | null => {
-  if (!/^\d+$/.test(left) || !/^\d+$/.test(right)) {
-    return null;
-  }
-  return new Decimal(left).times(right).toFixed(0);
-};
-
 export const formatSeoulDateTime = (value: string): string => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {

@@ -7,6 +7,7 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+    locale: "ko-KR",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

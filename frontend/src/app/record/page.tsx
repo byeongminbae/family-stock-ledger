@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { TradeEntryForm } from "@/components/trades";
-import { listBrokerages } from "@/lib/domain/brokerages";
+import { listBrokerages, listOwners } from "@/lib/server/stock-daejang-api";
 
 export const metadata: Metadata = {
   title: "기록하기",
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function RecordPage() {
-  const brokerages = await listBrokerages();
+  const [brokerages, owners] = await Promise.all([listBrokerages(), listOwners()]);
 
   return (
     <div className="page-frame page-stack">
@@ -21,8 +21,8 @@ export default async function RecordPage() {
         <p className="page-description">매수와 매도 기록을 한곳에서 차례로 남겨보세요.</p>
       </header>
 
-      <TradeEntryForm brokerages={brokerages} side="BUY" />
-      <TradeEntryForm brokerages={brokerages} side="SELL" />
+      <TradeEntryForm brokerages={brokerages} owners={owners} side="BUY" />
+      <TradeEntryForm brokerages={brokerages} owners={owners} side="SELL" />
     </div>
   );
 }

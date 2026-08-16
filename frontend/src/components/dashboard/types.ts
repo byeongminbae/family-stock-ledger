@@ -1,12 +1,8 @@
-import type { MarketSession } from "@/lib/domain/market-session";
-
-export const OWNER_NAMES = ["병민", "할머니", "아빠"] as const;
-
-export type OwnerName = (typeof OWNER_NAMES)[number];
+import type { MarketSession } from "@/lib/api-contracts";
 
 export type DashboardPosition = Readonly<{
   ownerId: number;
-  ownerName: OwnerName;
+  ownerName: string;
   brokerageCode: string | null;
   brokerageName: string | null;
   itemCode: string;
@@ -30,6 +26,14 @@ export type OwnerTotals = Readonly<{
   unrealizedProfit: string | null;
 }>;
 
+export type DashboardSummaryTotals = Readonly<{
+  stockCount: number;
+  quotedStockCount: number;
+  costBasis: string;
+  valuation: string | null;
+  unrealizedProfit: string | null;
+}>;
+
 export type BrokeragePositionGroup = Readonly<{
   brokerageCode: string | null;
   brokerageName: string | null;
@@ -37,10 +41,17 @@ export type BrokeragePositionGroup = Readonly<{
   totals: OwnerTotals;
 }>;
 
+export type DashboardOwner = Readonly<{
+  id: number;
+  name: string;
+  brokerageGroups: readonly BrokeragePositionGroup[];
+  totals: OwnerTotals;
+}>;
+
 export type DashboardSnapshot = Readonly<{
   positions: readonly DashboardPosition[];
-  brokerageGroups: Readonly<Record<OwnerName, readonly BrokeragePositionGroup[]>>;
-  ownerTotals: Readonly<Record<OwnerName, OwnerTotals>>;
+  owners: readonly DashboardOwner[];
+  summaryTotals: DashboardSummaryTotals;
   quoteFetchedAt: string | null;
   valuationSessions: readonly MarketSession[];
 }>;

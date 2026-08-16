@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useState, useTransition } from "react";
-import type { Brokerage } from "@/lib/domain/brokerages";
+import type { Brokerage, Owner } from "@/lib/api-contracts";
 import { HistoryFilterFields } from "./HistoryFilterFields";
 import {
   BASE_FILTER_KEYS,
@@ -15,6 +15,7 @@ import type { StockSelection, TradeSide } from "./types";
 
 interface HistoryFiltersProps {
   readonly brokerages: readonly Brokerage[];
+  readonly owners: readonly Owner[];
   readonly stocks: readonly StockSelection[];
   readonly side: TradeSide;
 }
@@ -24,7 +25,7 @@ interface ActiveFilter {
   readonly value: string;
 }
 
-export function HistoryFilters({ brokerages, stocks, side }: HistoryFiltersProps) {
+export function HistoryFilters({ brokerages, owners, stocks, side }: HistoryFiltersProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -105,6 +106,7 @@ export function HistoryFilters({ brokerages, stocks, side }: HistoryFiltersProps
       >
         <HistoryFilterFields
           brokerages={brokerages}
+          owners={owners}
           stocks={stocks}
           value={(key) => searchParams.get(key) ?? ""}
         />
@@ -139,7 +141,7 @@ export function HistoryFilters({ brokerages, stocks, side }: HistoryFiltersProps
             >
               {key === "period" ? "기간" : FILTER_LABELS[key]}:{" "}
               {key === "ownerId"
-                ? ownerFilterName(value)
+                ? ownerFilterName(owners, value)
                 : key === "brokerageCode"
                   ? brokerageFilterName(brokerages, value)
                   : key === "q"

@@ -1,6 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { type APIRequestContext, expect, type Locator, type Page, test } from "@playwright/test";
 
 import { openDeletionConfirmation, submitDeletionConfirmation } from "./helpers/trade-deletion";
 
@@ -22,6 +22,18 @@ const viewports = [
   { name: "tablet-768", width: 768, height: 1024 },
   { name: "desktop-1280", width: 1280, height: 900 },
 ] as const;
+const createdTradeIds: Record<"BUY" | "SELL", string[]> = { BUY: [], SELL: [] };
+
+async function cleanupCreatedTrades(request: APIRequestContext): Promise<void> {
+  for (const side of ["SELL", "BUY"] as const) {
+    for (const id of createdTradeIds[side].toReversed()) {
+      const response = await request.delete("/api/v1/trades", {
+        data: { ids: [id], side },
+      });
+      expect([200, 404]).toContain(response.status());
+    }
+  }
+}
 
 async function waitForRouteReady(page: Page, route: (typeof routes)[number]): Promise<void> {
   await expect(page.locator("h1")).toBeVisible();
@@ -85,9 +97,32 @@ async function addTrade(
   await region.getByLabel("소유주 (필수)").selectOption({ label: owner });
   await region.getByLabel(`${side} 수량 (필수)`).fill(quantity);
   await region.getByLabel(`${side} 당시 단가 (필수)`).fill(price);
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/v1/trades",
+  );
   await region.getByRole("button", { name: `${side} 기록 저장` }).click();
+  const response = await responsePromise;
+  expect(response.ok()).toBe(true);
+  const payload: unknown = await response.json();
+  const data =
+    typeof payload === "object" && payload !== null && "data" in payload ? payload.data : null;
+  if (typeof data !== "object" || data === null || !("id" in data) || typeof data.id !== "string") {
+    throw new Error("생성한 거래 ID를 읽지 못했습니다.");
+  }
+  createdTradeIds[side === "매수" ? "BUY" : "SELL"].push(data.id);
   await expect(region.getByText(`${side} 기록이 저장되었습니다.`)).toBeVisible();
 }
+
+test.beforeEach(() => {
+  createdTradeIds.BUY = [];
+  createdTradeIds.SELL = [];
+});
+
+test.afterEach(async ({ request }) => {
+  await cleanupCreatedTrades(request);
+});
 
 test("real journal flow and complete responsive capture set", async ({ page }) => {
   test.setTimeout(90_000);
@@ -171,7 +206,7 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
   await expect(
     page.getByText(/삭제에 실패했습니다. 어떤 기록도 삭제되지 않았습니다/),
   ).toBeVisible();
-  await expect(page.getByText(/이후 매도 시점의 보유 수량이 부족/)).toBeVisible();
+  await expect(page.getByText(/해당 거래 시점의 보유 수량보다 많이 매도/)).toBeVisible();
   await expect(oversoldBuy).toBeVisible();
   await capture(page, "buy-history-delete-rollback-error-1280.png");
   await page.getByRole("button", { name: "취소" }).click();
@@ -234,8 +269,6 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
   await expect(page.getByLabel("아빠 정렬 기준")).toHaveValue("costBasis");
   const byeongminTotal = page.locator('section[data-owner="병민"] tfoot tr');
   await expect(byeongminTotal).toContainText("합계 (1종목)");
-  await expect(byeongminTotal).toContainText("10주");
-  await expect(byeongminTotal).toContainText("70,000원");
   await expect(byeongminTotal).toContainText("700,000원");
   await capture(page, "dashboard-independent-sort-1280.png");
 

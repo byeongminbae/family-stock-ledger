@@ -11,7 +11,7 @@ const boughtStocks = [
 ] as const;
 
 async function createBuy(request: APIRequestContext, stock: (typeof boughtStocks)[number]) {
-  const response = await request.post("/api/trades", {
+  const response = await request.post("/api/v1/trades", {
     data: {
       brokerageCode: "240",
       executedAt: "2026-08-09T10:00",
@@ -27,15 +27,12 @@ async function createBuy(request: APIRequestContext, stock: (typeof boughtStocks
   });
   expect(response.ok()).toBe(true);
   const payload: unknown = await response.json();
-  if (
-    typeof payload !== "object" ||
-    payload === null ||
-    !("id" in payload) ||
-    typeof payload.id !== "string"
-  ) {
+  const data =
+    typeof payload === "object" && payload !== null && "data" in payload ? payload.data : null;
+  if (typeof data !== "object" || data === null || !("id" in data) || typeof data.id !== "string") {
     throw new Error("생성된 매수 기록 ID를 읽지 못했습니다.");
   }
-  createdTradeIds.push(payload.id);
+  createdTradeIds.push(data.id);
 }
 
 test.beforeEach(async ({ request }) => {
@@ -45,7 +42,7 @@ test.beforeEach(async ({ request }) => {
 
 test.afterEach(async ({ request }) => {
   if (createdTradeIds.length === 0) return;
-  const response = await request.delete("/api/trades", {
+  const response = await request.delete("/api/v1/trades", {
     data: { ids: createdTradeIds, side: "BUY" },
   });
   expect(response.ok()).toBe(true);
@@ -53,7 +50,7 @@ test.afterEach(async ({ request }) => {
 
 test("매수 종목만 로컬 콤보박스에서 검색하고 종목 코드로 히스토리를 적용한다", async ({ page }) => {
   let marketSearchCalls = 0;
-  await page.route("**/api/stocks/search**", async (route) => {
+  await page.route("**/api/v1/stocks/search**", async (route) => {
     marketSearchCalls += 1;
     await route.abort();
   });

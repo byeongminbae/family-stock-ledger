@@ -29,7 +29,7 @@ const fixtures = [
 const createdTradeIds: string[] = [];
 
 async function createBuy(request: APIRequestContext, fixture: BuyFixture): Promise<void> {
-  const response = await request.post("/api/trades", {
+  const response = await request.post("/api/v1/trades", {
     data: {
       brokerageCode: fixture.brokerageCode,
       executedAt: fixture.executedAt,
@@ -45,10 +45,11 @@ async function createBuy(request: APIRequestContext, fixture: BuyFixture): Promi
   });
   expect(response.ok()).toBe(true);
   const body: unknown = await response.json();
-  if (typeof body !== "object" || body === null || !("id" in body) || typeof body.id !== "string") {
+  const data = typeof body === "object" && body !== null && "data" in body ? body.data : null;
+  if (typeof data !== "object" || data === null || !("id" in data) || typeof data.id !== "string") {
     throw new Error("생성한 매수 기록 ID를 읽지 못했습니다.");
   }
-  createdTradeIds.push(body.id);
+  createdTradeIds.push(data.id);
 }
 
 test.beforeEach(async ({ request }) => {
@@ -58,7 +59,7 @@ test.beforeEach(async ({ request }) => {
 
 test.afterEach(async ({ request }) => {
   if (createdTradeIds.length === 0) return;
-  const response = await request.delete("/api/trades", {
+  const response = await request.delete("/api/v1/trades", {
     data: { ids: createdTradeIds, side: "BUY" },
   });
   expect(response.ok()).toBe(true);
@@ -129,7 +130,7 @@ test("삭제 문구를 정확히 입력하면 선택 기록을 삭제한다", as
   // When: the enabled confirmation button is pressed.
   const responsePromise = page.waitForResponse(
     (response) =>
-      response.request().method() === "DELETE" && response.url().endsWith("/api/trades"),
+      response.request().method() === "DELETE" && response.url().endsWith("/api/v1/trades"),
   );
   await dialog.getByRole("button", { name: "삭제", exact: true }).click();
 

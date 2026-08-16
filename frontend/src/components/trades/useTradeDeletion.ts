@@ -5,9 +5,19 @@ import { z } from "zod";
 
 import { sideLabel, type TradeHistoryRow, type TradeSide } from "./types";
 
-const deleteResponseSchema = z.discriminatedUnion("ok", [
-  z.strictObject({ ok: z.literal(true), deletedCount: z.number().int().positive() }),
-  z.strictObject({ ok: z.literal(false), message: z.string().min(1) }),
+const deleteResponseSchema = z.discriminatedUnion("success", [
+  z.strictObject({
+    success: z.literal(true),
+    timestamp: z.string(),
+    data: z.strictObject({ deletedCount: z.number().int().positive() }),
+  }),
+  z.strictObject({
+    success: z.literal(false),
+    statusCode: z.string(),
+    timestamp: z.string(),
+    message: z.string().min(1),
+    fieldErrors: z.record(z.string(), z.string()).nullable().optional(),
+  }),
 ]);
 
 type DeleteStatus = Readonly<{ readonly tone: "error" | "success"; readonly text: string }> | null;
@@ -68,16 +78,16 @@ export function useTradeDeletion({ rows, side }: UseTradeDeletionOptions) {
     setDeleting(true);
     setStatus(null);
     try {
-      const response = await ky.delete("/api/trades", {
+      const response = await ky.delete("/api/v1/trades", {
         throwHttpErrors: false,
         timeout: 10_000,
         json: { side, ids: selectedRowIds },
       });
       const result = deleteResponseSchema.parse(await response.json<unknown>());
-      if (!response.ok || !result.ok) {
+      if (!response.ok || !result.success) {
         setStatus({
           tone: "error",
-          text: result.ok
+          text: result.success
             ? "삭제에 실패했습니다. 어떤 기록도 삭제되지 않았습니다. 다시 시도해 주세요."
             : `삭제에 실패했습니다. 어떤 기록도 삭제되지 않았습니다. ${result.message}`,
         });
@@ -88,7 +98,7 @@ export function useTradeDeletion({ rows, side }: UseTradeDeletionOptions) {
       setSelectionMode(false);
       setStatus({
         tone: "success",
-        text: `${label} 기록 ${result.deletedCount}건을 삭제했습니다.`,
+        text: `${label} 기록 ${result.data.deletedCount}건을 삭제했습니다.`,
       });
       router.refresh();
     } catch {

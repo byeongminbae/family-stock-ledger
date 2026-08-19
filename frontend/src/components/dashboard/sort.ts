@@ -1,36 +1,36 @@
 import Decimal from "decimal.js";
 
-import type { DashboardPosition, SortDirection, SortField } from "./types";
+import type { DashboardStock, SortDirection, SortField } from "./types";
 
 const numericFields: ReadonlySet<SortField> = new Set([
   "heldQuantity",
   "averageBuyPrice",
   "costBasis",
-  "portfolioWeight",
+  "brokerageWeight",
   "currentPrice",
   "unrealizedProfit",
   "valuation",
   "returnRate",
 ]);
 
-function stableCompare(a: DashboardPosition, b: DashboardPosition): number {
+function stableCompare(a: DashboardStock, b: DashboardStock): number {
   const byName = a.stockName.localeCompare(b.stockName, "ko");
   return byName === 0 ? a.itemCode.localeCompare(b.itemCode) : byName;
 }
 
-function valueFor(position: DashboardPosition, field: SortField): string | null {
-  if (field === "stockName") return position.stockName;
-  return position[field];
+function valueFor(stock: DashboardStock, field: SortField): string | null {
+  if (field === "stockName") return stock.stockName;
+  return stock[field];
 }
 
-export function sortPositions(
-  positions: readonly DashboardPosition[],
+export function sortStocks(
+  stocks: readonly DashboardStock[],
   field: SortField,
   direction: SortDirection,
-): readonly DashboardPosition[] {
+): readonly DashboardStock[] {
   const multiplier = direction === "asc" ? 1 : -1;
 
-  return [...positions].sort((a, b) => {
+  return [...stocks].sort((a, b) => {
     const firstQuoteMissing = a.currentPrice === null;
     const secondQuoteMissing = b.currentPrice === null;
     if (firstQuoteMissing !== secondQuoteMissing) return firstQuoteMissing ? 1 : -1;

@@ -1,12 +1,11 @@
 import type { MarketSession } from "@/lib/api-contracts";
+
 import styles from "./dashboard.module.css";
 import { formatQuoteTime, formatSignedWon, formatWon } from "./format";
-import type { DashboardSummaryTotals } from "./types";
+import type { DashboardResponse } from "./types";
 
 type SummaryStripProps = Readonly<{
-  totals: DashboardSummaryTotals;
-  quoteFetchedAt: string | null;
-  valuationSessions: readonly MarketSession[];
+  dashboard: DashboardResponse;
   refreshing: boolean;
   onRefresh: () => void;
 }>;
@@ -19,16 +18,11 @@ const marketSessionLabels = {
 } as const satisfies Readonly<Record<MarketSession, string>>;
 const valuationBasisLabels = ["프리", "정규장", "에프터"] as const;
 
-export function SummaryStrip({
-  totals,
-  quoteFetchedAt,
-  valuationSessions,
-  refreshing,
-  onRefresh,
-}: SummaryStripProps) {
-  const { costBasis, quotedStockCount, stockCount, unrealizedProfit, valuation } = totals;
+export function SummaryStrip({ dashboard, refreshing, onRefresh }: SummaryStripProps) {
+  const { costBasis, quoteFetchedAt, quotedStockCount, stockCount, unrealizedProfit, valuation } =
+    dashboard;
   const activeValuationBasisLabels = new Set(
-    valuationSessions.map((session) => marketSessionLabels[session]),
+    dashboard.valuationSessions.map((session) => marketSessionLabels[session]),
   );
   const valuationBasis =
     activeValuationBasisLabels.size === 0

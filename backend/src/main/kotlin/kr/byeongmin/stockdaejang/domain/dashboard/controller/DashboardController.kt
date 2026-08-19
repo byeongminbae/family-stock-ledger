@@ -2,7 +2,7 @@ package kr.byeongmin.stockdaejang.domain.dashboard.controller
 
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
-import kr.byeongmin.stockdaejang.domain.dashboard.dto.DashboardSnapshotResponseDto
+import kr.byeongmin.stockdaejang.domain.dashboard.dto.DashboardResponseDto
 import kr.byeongmin.stockdaejang.domain.dashboard.service.DashboardService
 import kr.byeongmin.stockdaejang.global.response.SuccessDataResponse
 import org.springframework.http.MediaType
@@ -21,7 +21,7 @@ class DashboardController(
         summary = "대시보드 현황 조회",
         description = "소유주·증권사별 보유 수량, 매수평균단가와 평가 손익을 조회합니다. 일부 종목의 시세를 가져오지 못해도 가능한 현황을 반환하며, 시세가 필요한 값은 null일 수 있습니다.",
     )
-    fun getSnapshot(): SuccessDataResponse<DashboardSnapshotResponseDto> {
-        return dashboardService.getSnapshot()
+    fun getDashboard(): SuccessDataResponse<DashboardResponseDto> {
+        return dashboardService.getDashboard()
     }
 }

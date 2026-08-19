@@ -7,7 +7,7 @@ import {
   formatWon,
   profitLabel,
 } from "./format";
-import type { BrokeragePositionGroup, OwnerTotals, SortDirection, SortField } from "./types";
+import type { DashboardBrokerage, DashboardOwner, SortDirection, SortField } from "./types";
 
 const columns: readonly Readonly<{
   field: SortField;
@@ -17,7 +17,7 @@ const columns: readonly Readonly<{
   { field: "heldQuantity", label: "보유 수량" },
   { field: "averageBuyPrice", label: "매수평균단가" },
   { field: "costBasis", label: "매입액" },
-  { field: "portfolioWeight", label: "증권사 비중" },
+  { field: "brokerageWeight", label: "증권사 비중" },
   { field: "currentPrice", label: "현재가" },
   { field: "unrealizedProfit", label: "평가 손익" },
   { field: "valuation", label: "평가액" },
@@ -25,9 +25,8 @@ const columns: readonly Readonly<{
 ];
 
 type PositionTableProps = Readonly<{
-  ownerName: string;
-  groups: readonly BrokeragePositionGroup[];
-  totals: OwnerTotals;
+  owner: DashboardOwner;
+  brokerages: readonly DashboardBrokerage[];
   sortField: SortField;
   sortDirection: SortDirection;
   onSort: (field: SortField) => void;
@@ -42,8 +41,10 @@ function ariaSort(
   return direction === "asc" ? "ascending" : "descending";
 }
 
-function PositionTotalCells({ totals }: Readonly<{ totals: OwnerTotals }>) {
-  const profitState = profitLabel(totals.unrealizedProfit);
+function PositionTotalCells({
+  aggregate,
+}: Readonly<{ aggregate: DashboardBrokerage | DashboardOwner }>) {
+  const profitState = profitLabel(aggregate.unrealizedProfit);
   const profitClass =
     profitState === "이익" ? "positive" : profitState === "손실" ? "negative" : "";
 
@@ -55,21 +56,18 @@ function PositionTotalCells({ totals }: Readonly<{ totals: OwnerTotals }>) {
       <td className="money">
         -<span className="sr-only">매수평균단가는 합산하지 않습니다</span>
       </td>
-      <td className="money">{formatWon(totals.costBasis)}</td>
+      <td className="money">{formatWon(aggregate.costBasis)}</td>
       <td className="money">
-        {formatPercent(totals.portfolioWeight)}
-        {totals.portfolioWeight === null ? (
-          <span className="sr-only">증권사 비중은 전체 합계에서 표시하지 않습니다</span>
-        ) : null}
+        -<span className="sr-only">증권사 비중은 종목별로만 표시합니다</span>
       </td>
       <td className="money">
         -<span className="sr-only">현재가는 합산하지 않습니다</span>
       </td>
       <td className={`money ${profitClass}`}>
         <span className="sr-only">{profitState} </span>
-        {formatSignedWon(totals.unrealizedProfit)}
+        {formatSignedWon(aggregate.unrealizedProfit)}
       </td>
-      <td className="money">{formatWon(totals.valuation)}</td>
+      <td className="money">{formatWon(aggregate.valuation)}</td>
       <td className="money">
         -<span className="sr-only">수익률은 합산하지 않습니다</span>
       </td>
@@ -78,9 +76,8 @@ function PositionTotalCells({ totals }: Readonly<{ totals: OwnerTotals }>) {
 }
 
 export function PositionTable({
-  ownerName,
-  groups,
-  totals,
+  owner,
+  brokerages,
   sortField,
   sortDirection,
   onSort,
@@ -88,7 +85,7 @@ export function PositionTable({
   return (
     <div className={`desktop-only ${styles.tableWrap}`}>
       <table className={styles.table}>
-        <caption className="sr-only">{ownerName}의 보유 종목 현황</caption>
+        <caption className="sr-only">{owner.name}의 보유 종목 현황</caption>
         <thead>
           <tr>
             <th className={styles.brokerageColumn} scope="col">
@@ -110,68 +107,68 @@ export function PositionTable({
             ))}
           </tr>
         </thead>
-        {groups.map((group) => (
-          <tbody key={group.brokerageCode ?? "legacy"}>
-            {group.positions.map((position, positionIndex) => {
-              const profitState = profitLabel(position.unrealizedProfit);
+        {brokerages.map((brokerage) => (
+          <tbody key={brokerage.brokerageCode ?? "legacy"}>
+            {brokerage.stocks.map((stock, stockIndex) => {
+              const profitState = profitLabel(stock.unrealizedProfit);
               const profitClass =
                 profitState === "이익" ? "positive" : profitState === "손실" ? "negative" : "";
               return (
-                <tr key={`${position.brokerageCode ?? "legacy"}-${position.itemCode}`}>
-                  {positionIndex === 0 ? (
+                <tr key={`${brokerage.brokerageCode ?? "legacy"}-${stock.itemCode}`}>
+                  {stockIndex === 0 ? (
                     <th
                       className={styles.brokerageCell}
-                      rowSpan={group.positions.length}
+                      rowSpan={brokerage.stocks.length}
                       scope="rowgroup"
                     >
                       <span className={styles.brokerageName}>
-                        {group.brokerageName ?? "미지정"}
+                        {brokerage.brokerageName ?? "미지정"}
                       </span>
-                      {group.brokerageCode === null ? null : (
-                        <span className={styles.brokerageCode}>{group.brokerageCode}</span>
+                      {brokerage.brokerageCode === null ? null : (
+                        <span className={styles.brokerageCode}>{brokerage.brokerageCode}</span>
                       )}
                     </th>
                   ) : null}
                   <th scope="row">
-                    <span className={styles.stockName}>{position.stockName}</span>
-                    <span className={styles.stockCode}>{position.itemCode}</span>
+                    <span className={styles.stockName}>{stock.stockName}</span>
+                    <span className={styles.stockCode}>{stock.itemCode}</span>
                   </th>
-                  <td className="money">{formatQuantity(position.heldQuantity)}</td>
-                  <td className="money">{formatWon(position.averageBuyPrice)}</td>
-                  <td className="money">{formatWon(position.costBasis)}</td>
-                  <td className="money">{formatPercent(position.portfolioWeight)}</td>
+                  <td className="money">{formatQuantity(stock.heldQuantity)}</td>
+                  <td className="money">{formatWon(stock.averageBuyPrice)}</td>
+                  <td className="money">{formatWon(stock.costBasis)}</td>
+                  <td className="money">{formatPercent(stock.brokerageWeight)}</td>
                   <td className="money">
-                    {formatWon(position.currentPrice)}
-                    {position.currentPrice === null ? (
+                    {formatWon(stock.currentPrice)}
+                    {stock.currentPrice === null ? (
                       <span className="sr-only">가격 조회 실패</span>
                     ) : null}
                   </td>
                   <td className={`money ${profitClass}`}>
                     <span className="sr-only">{profitState} </span>
-                    {formatSignedWon(position.unrealizedProfit)}
+                    {formatSignedWon(stock.unrealizedProfit)}
                   </td>
-                  <td className="money">{formatWon(position.valuation)}</td>
+                  <td className="money">{formatWon(stock.valuation)}</td>
                   <td className={`money ${profitClass}`}>
                     <span className="sr-only">{profitState} </span>
-                    {formatSignedPercent(position.returnRate)}
+                    {formatSignedPercent(stock.returnRate)}
                   </td>
                 </tr>
               );
             })}
             <tr className={styles.brokerageTotalRow}>
               <th colSpan={2} scope="row">
-                {group.brokerageName ?? "미지정 증권사"} 합계 ({group.totals.stockCount}종목)
+                {brokerage.brokerageName ?? "미지정 증권사"} 합계 ({brokerage.stockCount}종목)
               </th>
-              <PositionTotalCells totals={group.totals} />
+              <PositionTotalCells aggregate={brokerage} />
             </tr>
           </tbody>
         ))}
         <tfoot>
           <tr className={styles.ownerTotalRow}>
             <th colSpan={2} scope="row">
-              전체 합계 ({totals.stockCount}종목)
+              전체 합계 ({owner.stockCount}종목)
             </th>
-            <PositionTotalCells totals={totals} />
+            <PositionTotalCells aggregate={owner} />
           </tr>
         </tfoot>
       </table>

@@ -102,8 +102,13 @@ class StockDaejangApplicationTests {
 
     @Test
     fun `공개 응답과 요청 DTO의 모든 필드는 Swagger에서 의미를 설명한다`() {
+        // Given
+
+        // When
         val document = openApiDocument()
         val schemas = document.path("components").path("schemas")
+
+        // Then
         val schemasWithIsEtf = listOf(
             "PurchasedStockResponseDto",
             "StockSearchItemResponseDto",
@@ -119,12 +124,10 @@ class StockDaejangApplicationTests {
 
         val publicSchemas = listOf(
             "BrokerageResponseDto",
-            "BrokeragePositionGroupResponseDto",
+            "DashboardBrokerageResponseDto",
             "DashboardOwnerResponseDto",
-            "DashboardPositionResponseDto",
-            "DashboardSnapshotResponseDto",
-            "DashboardSummaryTotalsResponseDto",
-            "OwnerTotalsResponseDto",
+            "DashboardResponseDto",
+            "DashboardStockResponseDto",
             "HistoryFiltersResponseDto",
             "PurchasedStockResponseDto",
             "TradeHistoryResponseDto",
@@ -146,6 +149,36 @@ class StockDaejangApplicationTests {
             assertFalse(schema.isMissingNode, "$schemaName 스키마가 OpenAPI 문서에 없습니다.")
         }
 
+        val dashboardSchemas = buildSet {
+            schemas.properties().forEach { (schemaName, _) ->
+                if (schemaName.startsWith("Dashboard") && schemaName.endsWith("ResponseDto")) {
+                    add(schemaName)
+                }
+            }
+        }
+        assertEquals(
+            setOf(
+                "DashboardResponseDto",
+                "DashboardOwnerResponseDto",
+                "DashboardBrokerageResponseDto",
+                "DashboardStockResponseDto",
+            ),
+            dashboardSchemas,
+            "공개 대시보드 응답 스키마는 새 네 종류만 존재해야 합니다.",
+        )
+        listOf(
+            "DashboardSnapshotResponseDto",
+            "DashboardPositionResponseDto",
+            "DashboardSummaryTotalsResponseDto",
+            "BrokeragePositionGroupResponseDto",
+            "OwnerTotalsResponseDto",
+        ).forEach { obsoleteSchemaName ->
+            assertTrue(
+                schemas.path(obsoleteSchemaName).isMissingNode,
+                "$obsoleteSchemaName 스키마는 OpenAPI 문서에서 제거되어야 합니다.",
+            )
+        }
+
         schemas.properties().forEach { (schemaName, schema) ->
             assertTrue(schema.path("description").asString().isNotBlank(), "$schemaName 설명이 비어 있습니다.")
             assertTrue(schema.path("properties").size() > 0, "$schemaName 필드가 OpenAPI 문서에 없습니다.")
@@ -158,8 +191,21 @@ class StockDaejangApplicationTests {
         }
 
         assertEquals("240", schemas.path("BrokerageResponseDto").path("properties").path("code").path("example").asString())
-        assertEquals("264", schemas.path("DashboardPositionResponseDto").path("properties").path("brokerageCode").path("example").asString())
-        assertEquals("키움증권", schemas.path("DashboardPositionResponseDto").path("properties").path("brokerageName").path("example").asString())
+        assertEquals("264", schemas.path("DashboardBrokerageResponseDto").path("properties").path("brokerageCode").path("example").asString())
+        assertEquals("키움증권", schemas.path("DashboardBrokerageResponseDto").path("properties").path("brokerageName").path("example").asString())
+        val dashboardStockProperties = schemas.path("DashboardStockResponseDto").path("properties")
+        assertFalse(dashboardStockProperties.path("brokerageWeight").isMissingNode, "DashboardStockResponseDto.brokerageWeight가 OpenAPI 문서에 없습니다.")
+        listOf("ownerId", "ownerName", "brokerageCode", "brokerageName", "portfolioWeight").forEach { obsoletePropertyName ->
+            assertTrue(
+                dashboardStockProperties.path(obsoletePropertyName).isMissingNode,
+                "DashboardStockResponseDto.${obsoletePropertyName}는 포함되면 안 됩니다.",
+            )
+        }
+        listOf("DashboardResponseDto", "DashboardOwnerResponseDto", "DashboardBrokerageResponseDto").forEach { aggregateSchemaName ->
+            val aggregateProperties = schemas.path(aggregateSchemaName).path("properties")
+            assertTrue(aggregateProperties.path("currentPrice").isMissingNode, "$aggregateSchemaName.currentPrice는 합계에 포함되면 안 됩니다.")
+            assertTrue(aggregateProperties.path("portfolioWeight").isMissingNode, "$aggregateSchemaName.portfolioWeight는 합계에 포함되면 안 됩니다.")
+        }
         assertFalse(schemas.toString().contains("KIWOOM"), "존재하지 않는 영문 증권사 코드 KIWOOM이 문서에 남아 있습니다.")
 
         val tradeRequest = schemas.path("TradeRequestDto")
@@ -170,15 +216,6 @@ class StockDaejangApplicationTests {
         assertEquals(
             setOf("brokerageCode", "executedAt", "isEtf", "itemCode", "market", "ownerId", "quantity", "securityName", "side", "unitPrice"),
             requiredTradeFields,
-        )
-
-        val currentPrice = schemas.path("OwnerTotalsResponseDto").path("properties").path("currentPrice")
-        assertFalse(currentPrice.isMissingNode, "OwnerTotalsResponseDto.currentPrice가 OpenAPI 문서에 없습니다.")
-        val currentPriceType = currentPrice.path("type")
-        assertTrue(
-            currentPriceType.asString() == "null" ||
-                currentPriceType.isArray && currentPriceType.size() == 1 && currentPriceType.first().asString() == "null",
-            "OwnerTotalsResponseDto.currentPrice는 항상 null인 스키마여야 합니다.",
         )
 
         val historySideParameter = document
@@ -194,7 +231,7 @@ class StockDaejangApplicationTests {
             tradeSideValues,
             "TradeSide 허용값은 BUY와 SELL이 한 번씩만 노출되어야 합니다.",
         )
-        val valuationSessions = schemas.path("DashboardSnapshotResponseDto").path("properties").path("valuationSessions")
+        val valuationSessions = schemas.path("DashboardResponseDto").path("properties").path("valuationSessions")
         assertTrue(valuationSessions.path("enum").isMissingNode, "valuationSessions 배열 자체에 enum이 지정되어서는 안 됩니다.")
         val valuationSessionValues = valuationSessions.path("items").path("enum").values().map { it.asString() }
         assertEquals(

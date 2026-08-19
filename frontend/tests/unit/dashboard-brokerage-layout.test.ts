@@ -6,99 +6,87 @@ import { OwnerSection } from "../../src/components/dashboard/owner-section";
 import { PositionCards } from "../../src/components/dashboard/position-cards";
 import { PositionTable } from "../../src/components/dashboard/position-table";
 import type {
-  BrokeragePositionGroup,
-  DashboardPosition,
-  OwnerTotals,
+  DashboardBrokerage,
+  DashboardOwner,
+  DashboardStock,
 } from "../../src/components/dashboard/types";
 
-const samsungPosition: DashboardPosition = {
-  ownerId: 1,
-  ownerName: "병민",
-  brokerageCode: "240",
-  brokerageName: "삼성증권",
+const samsungStock: DashboardStock = {
   itemCode: "005930",
   stockName: "삼성전자",
   heldQuantity: "2",
   averageBuyPrice: "70000",
   costBasis: "140000",
-  portfolioWeight: "20",
+  brokerageWeight: "20",
   currentPrice: "80000",
   valuation: "160000",
   unrealizedProfit: "20000",
   returnRate: "14.2857",
 };
 
-const groups: readonly BrokeragePositionGroup[] = [
+const brokerages: readonly DashboardBrokerage[] = [
   {
     brokerageCode: "240",
     brokerageName: "삼성증권",
-    positions: [
-      samsungPosition,
+    stockCount: 2,
+    costBasis: "280000",
+    valuation: "320000",
+    unrealizedProfit: "40000",
+    stocks: [
+      samsungStock,
       {
-        ...samsungPosition,
+        ...samsungStock,
         itemCode: "000660",
-        portfolioWeight: "30",
+        brokerageWeight: "60",
         stockName: "SK하이닉스",
       },
     ],
-    totals: {
-      stockCount: 2,
-      costBasis: "280000",
-      portfolioWeight: "100",
-      currentPrice: null,
-      valuation: "320000",
-      unrealizedProfit: "40000",
-    },
   },
 ];
 
-const totals: OwnerTotals = {
+const owner: DashboardOwner = {
+  id: 1,
+  name: "병민",
   stockCount: 2,
   costBasis: "280000",
-  portfolioWeight: null,
-  currentPrice: null,
   valuation: "320000",
   unrealizedProfit: "40000",
+  brokerages,
 };
 
 describe("dashboard brokerage layout", () => {
   it("shows a unique stock count for an owner holding the same stock at two brokerages", () => {
     // Given: the owner's Samsung Electronics position is split between two brokerages.
-    const duplicatedStockGroups: readonly BrokeragePositionGroup[] = [
+    const duplicatedStockBrokerages: readonly DashboardBrokerage[] = [
       {
         brokerageCode: "240",
         brokerageName: "삼성증권",
-        positions: [samsungPosition],
-        totals: {
-          stockCount: 1,
-          costBasis: "140000",
-          portfolioWeight: "100",
-          currentPrice: null,
-          valuation: "160000",
-          unrealizedProfit: "20000",
-        },
+        stockCount: 1,
+        costBasis: "140000",
+        valuation: "160000",
+        unrealizedProfit: "20000",
+        stocks: [samsungStock],
       },
       {
         brokerageCode: "264",
         brokerageName: "키움증권",
-        positions: [{ ...samsungPosition, brokerageCode: "264", brokerageName: "키움증권" }],
-        totals: {
-          stockCount: 1,
-          costBasis: "140000",
-          portfolioWeight: "100",
-          currentPrice: null,
-          valuation: "160000",
-          unrealizedProfit: "20000",
-        },
+        stockCount: 1,
+        costBasis: "140000",
+        valuation: "160000",
+        unrealizedProfit: "20000",
+        stocks: [samsungStock],
       },
     ];
+    const ownerWithDuplicatedStock: DashboardOwner = {
+      ...owner,
+      stockCount: 1,
+      brokerages: duplicatedStockBrokerages,
+    };
 
     // When: the owner's dashboard section is rendered with a one-stock owner total.
     const markup = renderToStaticMarkup(
       createElement(OwnerSection, {
-        ownerName: "병민",
-        groups: duplicatedStockGroups,
-        totals: { ...totals, stockCount: 1 },
+        owner: ownerWithDuplicatedStock,
       }),
     );
 
@@ -110,9 +98,8 @@ describe("dashboard brokerage layout", () => {
   it("renders brokerage as a compact table column", () => {
     // Given: one brokerage containing two aggregated stock positions.
     const table = createElement(PositionTable, {
-      ownerName: "병민",
-      groups,
-      totals,
+      owner,
+      brokerages,
       sortField: "stockName",
       sortDirection: "asc",
       onSort: () => undefined,
@@ -127,13 +114,13 @@ describe("dashboard brokerage layout", () => {
     expect(markup).not.toContain('colSpan="9" scope="rowgroup"');
     expect(markup).toContain("삼성증권 합계 (2종목)");
     expect(markup).toContain("증권사 비중");
-    expect(markup.match(/100\.00%/gu)).toHaveLength(1);
-    expect(markup).toContain("증권사 비중은 전체 합계에서 표시하지 않습니다");
+    expect(markup).toContain("20.00%");
+    expect(markup).toContain("60.00%");
   });
 
   it("renders brokerage metadata inside every compact stock card", () => {
     // Given: two stock cards from the same brokerage.
-    const cards = createElement(PositionCards, { ownerName: "병민", groups, totals });
+    const cards = createElement(PositionCards, { owner, brokerages });
 
     // When: the compact dashboard cards are rendered.
     const markup = renderToStaticMarkup(cards);
@@ -143,8 +130,8 @@ describe("dashboard brokerage layout", () => {
     expect(markup.match(/<strong>삼성증권<\/strong>/gu)).toHaveLength(2);
     expect(markup).toContain("삼성증권 합계 (2종목)");
     expect(markup).toContain("증권사 비중");
-    expect(markup.match(/100\.00%/gu)).toHaveLength(1);
-    expect(markup).toContain("증권사 비중은 전체 합계에서 표시하지 않습니다");
+    expect(markup).toContain("20.00%");
+    expect(markup).toContain("60.00%");
     expect(markup).not.toContain('aria-labelledby="brokerage-');
   });
 });

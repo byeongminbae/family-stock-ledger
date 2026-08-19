@@ -7,16 +7,16 @@ import { useTransition } from "react";
 import styles from "./dashboard.module.css";
 import { OwnerSection } from "./owner-section";
 import { SummaryStrip } from "./summary-strip";
-import type { DashboardSnapshot } from "./types";
+import type { DashboardResponse } from "./types";
 
 type DashboardViewProps = Readonly<{
-  snapshot: DashboardSnapshot;
+  dashboard: DashboardResponse;
 }>;
 
-export function DashboardView({ snapshot }: DashboardViewProps) {
+export function DashboardView({ dashboard }: DashboardViewProps) {
   const router = useRouter();
   const [refreshing, startRefresh] = useTransition();
-  const isEmpty = snapshot.positions.length === 0;
+  const isEmpty = dashboard.stockCount === 0;
 
   function refreshPrices() {
     startRefresh(() => router.refresh());
@@ -37,13 +37,7 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
         </Link>
       </header>
 
-      <SummaryStrip
-        totals={snapshot.summaryTotals}
-        quoteFetchedAt={snapshot.quoteFetchedAt}
-        valuationSessions={snapshot.valuationSessions}
-        refreshing={refreshing}
-        onRefresh={refreshPrices}
-      />
+      <SummaryStrip dashboard={dashboard} refreshing={refreshing} onRefresh={refreshPrices} />
 
       {isEmpty ? (
         <aside className={styles.firstTrade}>
@@ -58,13 +52,8 @@ export function DashboardView({ snapshot }: DashboardViewProps) {
       ) : null}
 
       <div className={styles.ownerStack} aria-busy={refreshing}>
-        {snapshot.owners.map((owner) => (
-          <OwnerSection
-            key={owner.id}
-            ownerName={owner.name}
-            groups={owner.brokerageGroups}
-            totals={owner.totals}
-          />
+        {dashboard.owners.map((owner) => (
+          <OwnerSection key={owner.id} owner={owner} />
         ))}
       </div>
     </div>

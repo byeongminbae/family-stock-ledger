@@ -15,6 +15,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     return <PrimitiveShowcase />;
   }
 
-  const snapshot = await loadDashboard();
-  return <DashboardView snapshot={snapshot} />;
+  const dashboard = await loadDashboard();
+  return <DashboardView dashboard={dashboard} />;
 }

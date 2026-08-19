@@ -8,15 +8,16 @@ describe("dashboard summary", () => {
   it("shows the Korean market sessions immediately after the holding count", () => {
     // Given: the evaluated positions use every supported market session.
     const summary = createElement(SummaryStrip, {
-      totals: {
+      dashboard: {
         stockCount: 0,
         quotedStockCount: 0,
         costBasis: "0",
         valuation: null,
         unrealizedProfit: null,
+        owners: [],
+        quoteFetchedAt: null,
+        valuationSessions: ["PREOPEN", "PRE_MARKET", "REGULAR_MARKET", "AFTER_MARKET"],
       },
-      quoteFetchedAt: null,
-      valuationSessions: ["PREOPEN", "PRE_MARKET", "REGULAR_MARKET", "AFTER_MARKET"],
       refreshing: false,
       onRefresh: () => undefined,
     });
@@ -33,15 +34,16 @@ describe("dashboard summary", () => {
   it("counts each stock once across owners and brokerages", () => {
     // Given: two owners hold Samsung Electronics across four brokerage positions.
     const summary = createElement(SummaryStrip, {
-      totals: {
+      dashboard: {
         stockCount: 1,
         quotedStockCount: 1,
         costBasis: "280000",
         valuation: "320000",
         unrealizedProfit: "40000",
+        owners: [],
+        quoteFetchedAt: "2026-08-13T15:30:00+09:00",
+        valuationSessions: ["REGULAR_MARKET"],
       },
-      quoteFetchedAt: "2026-08-13T15:30:00+09:00",
-      valuationSessions: ["REGULAR_MARKET"],
       refreshing: false,
       onRefresh: () => undefined,
     });

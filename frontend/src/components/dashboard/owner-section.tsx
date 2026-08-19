@@ -6,8 +6,8 @@ import { useMemo, useState } from "react";
 import styles from "./dashboard.module.css";
 import { PositionCards } from "./position-cards";
 import { PositionTable } from "./position-table";
-import { sortPositions } from "./sort";
-import type { BrokeragePositionGroup, OwnerTotals, SortDirection, SortField } from "./types";
+import { sortStocks } from "./sort";
+import type { DashboardBrokerage, DashboardOwner, SortDirection, SortField } from "./types";
 
 const sortOptions: readonly Readonly<{
   value: SortField;
@@ -17,7 +17,7 @@ const sortOptions: readonly Readonly<{
   { value: "heldQuantity", label: "보유 수량" },
   { value: "averageBuyPrice", label: "매수평균단가" },
   { value: "costBasis", label: "매입액" },
-  { value: "portfolioWeight", label: "증권사 비중" },
+  { value: "brokerageWeight", label: "증권사 비중" },
   { value: "currentPrice", label: "현재가" },
   { value: "unrealizedProfit", label: "평가 손익" },
   { value: "valuation", label: "평가액" },
@@ -25,34 +25,32 @@ const sortOptions: readonly Readonly<{
 ];
 
 type OwnerSectionProps = Readonly<{
-  ownerName: string;
-  groups: readonly BrokeragePositionGroup[];
-  totals: OwnerTotals;
+  owner: DashboardOwner;
 }>;
 
 function selectedSortField(value: string): SortField | null {
   return sortOptions.find((option) => option.value === value)?.value ?? null;
 }
 
-function sortedGroups(
-  groups: readonly BrokeragePositionGroup[],
+function sortedBrokerages(
+  brokerages: readonly DashboardBrokerage[],
   sortField: SortField,
   sortDirection: SortDirection,
-): readonly BrokeragePositionGroup[] {
-  return groups.map((group) => ({
-    ...group,
-    positions: sortPositions(group.positions, sortField, sortDirection),
+): readonly DashboardBrokerage[] {
+  return brokerages.map((brokerage) => ({
+    ...brokerage,
+    stocks: sortStocks(brokerage.stocks, sortField, sortDirection),
   }));
 }
 
-export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
+export function OwnerSection({ owner }: OwnerSectionProps) {
   const [sortField, setSortField] = useState<SortField>("costBasis");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const sorted = useMemo(
-    () => sortedGroups(groups, sortField, sortDirection),
-    [groups, sortDirection, sortField],
+    () => sortedBrokerages(owner.brokerages, sortField, sortDirection),
+    [owner.brokerages, sortDirection, sortField],
   );
-  const headingId = `owner-${ownerName}`;
+  const headingId = `owner-${owner.name}`;
   const activeLabel = sortOptions.find((option) => option.value === sortField)?.label ?? "매입액";
 
   function changeSortField(value: string) {
@@ -70,17 +68,17 @@ export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
   }
 
   return (
-    <section className={styles.ownerSection} data-owner={ownerName} aria-labelledby={headingId}>
+    <section className={styles.ownerSection} data-owner={owner.name} aria-labelledby={headingId}>
       <div className={styles.ownerHeader}>
         <div>
           <p className={styles.ownerEyebrow}>소유주</p>
-          <h2 id={headingId}>{ownerName}</h2>
+          <h2 id={headingId}>{owner.name}</h2>
           <p>
-            {groups.length}개 증권사, {totals.stockCount}개 종목 보유
+            {owner.brokerages.length}개 증권사, {owner.stockCount}개 종목 보유
           </p>
         </div>
         <div className={styles.sortControls}>
-          <label htmlFor={`${headingId}-sort`}>{ownerName} 정렬 기준</label>
+          <label htmlFor={`${headingId}-sort`}>{owner.name} 정렬 기준</label>
           <select
             id={`${headingId}-sort`}
             className="control"
@@ -97,7 +95,7 @@ export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
             type="button"
             className="button button--secondary"
             onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-            aria-label={`${ownerName} 정렬 방향, 현재 ${
+            aria-label={`${owner.name} 정렬 방향, 현재 ${
               sortDirection === "asc" ? "오름차순" : "내림차순"
             }`}
           >
@@ -107,11 +105,11 @@ export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
       </div>
 
       <p className="sr-only" aria-live="polite">
-        {ownerName} 목록을 {activeLabel} {sortDirection === "asc" ? "오름차순" : "내림차순"}으로
+        {owner.name} 목록을 {activeLabel} {sortDirection === "asc" ? "오름차순" : "내림차순"}으로
         정렬했습니다.
       </p>
 
-      {totals.stockCount === 0 ? (
+      {owner.stockCount === 0 ? (
         <div className={styles.ownerEmpty}>
           <p>현재 보유 중인 종목이 없습니다.</p>
           <Link className="button button--secondary" href="/record">
@@ -121,14 +119,13 @@ export function OwnerSection({ ownerName, groups, totals }: OwnerSectionProps) {
       ) : (
         <>
           <PositionTable
-            ownerName={ownerName}
-            groups={sorted}
-            totals={totals}
+            owner={owner}
+            brokerages={sorted}
             sortField={sortField}
             sortDirection={sortDirection}
             onSort={sortFromHeader}
           />
-          <PositionCards ownerName={ownerName} groups={sorted} totals={totals} />
+          <PositionCards owner={owner} brokerages={sorted} />
         </>
       )}
     </section>

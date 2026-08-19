@@ -2,7 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
-import { type Brokerage, MARKET_SESSIONS, type Owner } from "@/lib/api-contracts";
+import { type DashboardResponse, dashboardResponseSchema } from "@/components/dashboard/types";
+import type { Brokerage, Owner } from "@/lib/api-contracts";
 
 import { getInternalApiData } from "./internal-api";
 
@@ -12,60 +13,9 @@ const ownerSchema = z.strictObject({
   id: ownerIdSchema,
   name: z.string().trim().min(1),
 });
-const marketSessionSchema = z.enum(MARKET_SESSIONS);
 const brokerageSchema = z.strictObject({
   code: z.string().regex(/^\d{3}$/),
   name: z.string().min(1),
-});
-const dashboardPositionSchema = z.strictObject({
-  averageBuyPrice: financeTextSchema,
-  brokerageCode: z.string().nullable(),
-  brokerageName: z.string().nullable(),
-  costBasis: financeTextSchema,
-  currentPrice: financeTextSchema.nullable(),
-  heldQuantity: financeTextSchema,
-  itemCode: z.string().regex(/^[0-9A-Z]{6}$/),
-  ownerId: ownerIdSchema,
-  ownerName: z.string().min(1),
-  portfolioWeight: financeTextSchema.nullable(),
-  returnRate: financeTextSchema.nullable(),
-  stockName: z.string().min(1),
-  unrealizedProfit: financeTextSchema.nullable(),
-  valuation: financeTextSchema.nullable(),
-});
-const ownerTotalsSchema = z.strictObject({
-  costBasis: financeTextSchema,
-  currentPrice: z.null(),
-  portfolioWeight: financeTextSchema.nullable(),
-  stockCount: z.number().int().nonnegative(),
-  unrealizedProfit: financeTextSchema.nullable(),
-  valuation: financeTextSchema.nullable(),
-});
-const brokeragePositionGroupSchema = z.strictObject({
-  brokerageCode: z.string().nullable(),
-  brokerageName: z.string().nullable(),
-  positions: z.array(dashboardPositionSchema),
-  totals: ownerTotalsSchema,
-});
-const dashboardOwnerSchema = z.strictObject({
-  brokerageGroups: z.array(brokeragePositionGroupSchema),
-  id: ownerIdSchema,
-  name: z.string().min(1),
-  totals: ownerTotalsSchema,
-});
-const dashboardSummaryTotalsSchema = z.strictObject({
-  costBasis: financeTextSchema,
-  quotedStockCount: z.number().int().nonnegative(),
-  stockCount: z.number().int().nonnegative(),
-  unrealizedProfit: financeTextSchema.nullable(),
-  valuation: financeTextSchema.nullable(),
-});
-const dashboardSnapshotSchema = z.strictObject({
-  owners: z.array(dashboardOwnerSchema),
-  positions: z.array(dashboardPositionSchema),
-  quoteFetchedAt: z.string().nullable(),
-  summaryTotals: dashboardSummaryTotalsSchema,
-  valuationSessions: z.array(marketSessionSchema),
 });
 const historyFiltersSchema = z.strictObject({
   brokerageCode: z.string().nullable(),
@@ -108,7 +58,6 @@ const purchasedStockSchema = z.strictObject({
   name: z.string().min(1),
 });
 
-export type DashboardSnapshot = z.infer<typeof dashboardSnapshotSchema>;
 export type TradeHistoryResult = z.infer<typeof historySchema>;
 export type PurchasedStock = z.infer<typeof purchasedStockSchema>;
 
@@ -120,8 +69,8 @@ export function listOwners(): Promise<readonly Owner[]> {
   return getInternalApiData("owners", z.array(ownerSchema));
 }
 
-export function loadDashboardSnapshot(): Promise<DashboardSnapshot> {
-  return getInternalApiData("dashboard", dashboardSnapshotSchema);
+export function getDashboard(): Promise<DashboardResponse> {
+  return getInternalApiData("dashboard", dashboardResponseSchema);
 }
 
 export function listTradeHistory(

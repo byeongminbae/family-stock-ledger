@@ -1,18 +1,26 @@
 package kr.byeongmin.stockdaejang.domain.dashboard.controller
 
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 import kr.byeongmin.stockdaejang.domain.dashboard.dto.DashboardSnapshotResponseDto
 import kr.byeongmin.stockdaejang.domain.dashboard.service.DashboardService
 import kr.byeongmin.stockdaejang.global.response.SuccessDataResponse
+import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/api/v1/dashboard")
+@RequestMapping(value = ["/api/v1/dashboard"], produces = [MediaType.APPLICATION_JSON_VALUE])
+@Tag(name = "대시보드", description = "소유주와 증권사별 보유 종목 및 평가 손익 현황")
 class DashboardController(
     private val dashboardService: DashboardService,
 ) {
     @GetMapping
+    @Operation(
+        summary = "대시보드 현황 조회",
+        description = "소유주·증권사별 보유 수량, 매수평균단가와 평가 손익을 조회합니다. 일부 종목의 시세를 가져오지 못해도 가능한 현황을 반환하며, 시세가 필요한 값은 null일 수 있습니다.",
+    )
     fun getSnapshot(): SuccessDataResponse<DashboardSnapshotResponseDto> {
         return dashboardService.getSnapshot()
     }

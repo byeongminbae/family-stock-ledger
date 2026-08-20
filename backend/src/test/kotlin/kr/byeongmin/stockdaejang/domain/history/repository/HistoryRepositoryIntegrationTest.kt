@@ -19,9 +19,9 @@ import kotlin.test.assertEquals
 @SpringBootTest
 @Testcontainers
 @Import(QueryDslTestData::class)
-class HistoryQueryRepositoryIntegrationTest {
+class HistoryRepositoryIntegrationTest {
     @Autowired
-    private lateinit var repository: HistoryQueryRepository
+    private lateinit var repository: HistoryRepository
 
     @Autowired
     private lateinit var tradeService: TradeService

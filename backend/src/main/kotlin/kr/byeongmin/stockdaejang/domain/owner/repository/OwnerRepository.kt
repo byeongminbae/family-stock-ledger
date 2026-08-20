@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 
 @Repository
-class OwnerQueryRepository(private val queryFactory: JPAQueryFactory) {
+class OwnerRepository(private val queryFactory: JPAQueryFactory) {
     @Transactional(readOnly = true)
     fun findAll(): List<Owner> {
         return queryFactory

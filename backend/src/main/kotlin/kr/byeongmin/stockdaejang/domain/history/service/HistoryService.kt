@@ -3,7 +3,7 @@ package kr.byeongmin.stockdaejang.domain.history.service
 import kr.byeongmin.stockdaejang.domain.history.dto.PurchasedStockResponseDto
 import kr.byeongmin.stockdaejang.domain.history.dto.TradeHistoryResponseDto
 import kr.byeongmin.stockdaejang.domain.history.dto.TradeHistoryRowResponseDto
-import kr.byeongmin.stockdaejang.domain.history.repository.HistoryQueryRepository
+import kr.byeongmin.stockdaejang.domain.history.repository.HistoryRepository
 import kr.byeongmin.stockdaejang.domain.trade.entity.TradeSide
 import kr.byeongmin.stockdaejang.global.response.SuccessDataResponse
 import org.springframework.stereotype.Service
@@ -12,7 +12,7 @@ import java.time.ZoneOffset
 
 @Service
 class HistoryService(
-    private val historyQueryRepository: HistoryQueryRepository,
+    private val historyRepository: HistoryRepository,
 ) {
     @Transactional(readOnly = true)
     fun getHistory(
@@ -34,7 +34,7 @@ class HistoryService(
         )
         val fromInclusiveDateTime = HistoryFilterParser.startInstant(historyFilters.from)?.atOffset(ZoneOffset.UTC)
         val toExclusiveDateTime = HistoryFilterParser.endExclusiveInstant(historyFilters.to)?.atOffset(ZoneOffset.UTC)
-        val filteredTradeCount = historyQueryRepository.count(
+        val filteredTradeCount = historyRepository.count(
             side,
             historyFilters.q,
             fromInclusiveDateTime,
@@ -42,10 +42,10 @@ class HistoryService(
             historyFilters.ownerId,
             historyFilters.brokerageCode,
         )
-        val unfilteredTradeCount = historyQueryRepository.countAll(side)
+        val unfilteredTradeCount = historyRepository.countAll(side)
         val totalPages = maxOf(1, ((filteredTradeCount + PAGE_SIZE - 1) / PAGE_SIZE).toInt())
         val currentPage = minOf(historyFilters.page, totalPages)
-        val tradeHistoryRows = historyQueryRepository.findPage(
+        val tradeHistoryRows = historyRepository.findPage(
             side,
             historyFilters.q,
             fromInclusiveDateTime,
@@ -71,7 +71,7 @@ class HistoryService(
 
     @Transactional(readOnly = true)
     fun getPurchasedStocks(): SuccessDataResponse<List<PurchasedStockResponseDto>> {
-        val purchasedStocks = historyQueryRepository.findPurchasedStocks().map(PurchasedStockResponseDto::from)
+        val purchasedStocks = historyRepository.findPurchasedStocks().map(PurchasedStockResponseDto::from)
         return SuccessDataResponse(purchasedStocks)
     }
 

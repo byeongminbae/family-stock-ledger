@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
 
 @Repository
-class HistoryQueryRepository(private val queryFactory: JPAQueryFactory) {
+class HistoryRepository(private val queryFactory: JPAQueryFactory) {
     @Transactional(readOnly = true)
     fun count(
         side: TradeSide,

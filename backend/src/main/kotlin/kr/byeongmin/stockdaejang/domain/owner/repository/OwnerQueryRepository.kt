@@ -16,7 +16,7 @@ class OwnerQueryRepository(private val queryFactory: JPAQueryFactory) {
             .fetch()
     }
 
-    fun findById(id: Short): Owner? {
+    fun findById(id: Long): Owner? {
         return queryFactory
             .selectFrom(owner)
             .where(owner.id.eq(id))

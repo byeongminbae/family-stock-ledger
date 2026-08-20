@@ -5,18 +5,18 @@ import { describe, expect, it } from "vitest";
 import { SummaryStrip } from "../../src/components/dashboard/summary-strip";
 
 describe("dashboard summary", () => {
-  it("shows the Korean market sessions immediately after the holding count", () => {
-    // Given: the evaluated positions use every supported market session.
+  it("shows the Korean market session immediately after the holding count", () => {
+    // Given: the evaluated positions use the regular market session.
     const summary = createElement(SummaryStrip, {
       dashboard: {
-        stockCount: 0,
-        quotedStockCount: 0,
-        costBasis: "0",
-        valuation: null,
-        unrealizedProfit: null,
+        stockCount: 1,
+        checkedStockCount: 1,
+        totalBuyAmount: 0,
+        valuation: 0,
+        unrealizedProfit: 0,
         owners: [],
-        quoteFetchedAt: null,
-        valuationSessions: ["PREOPEN", "PRE_MARKET", "REGULAR_MARKET", "AFTER_MARKET"],
+        quoteFetchedAt: "2026-08-20T15:30:00+09:00",
+        valuationSession: "REGULAR_MARKET",
       },
       refreshing: false,
       onRefresh: () => undefined,
@@ -27,8 +27,35 @@ describe("dashboard summary", () => {
 
     // Then: the basis follows the holding count and uses Korean market names.
     expect(markup.indexOf("보유 종목")).toBeLessThan(markup.indexOf("평가 기준"));
-    expect(markup).toContain("프리 · 정규장 · 에프터");
+    expect(markup).toContain("정규장");
     expect(markup).not.toContain("개장 전");
+  });
+
+  it("keeps only quote metadata nullable for an empty dashboard", () => {
+    // Given: the empty dashboard has zero-valued finance fields and no quote metadata.
+    const summary = createElement(SummaryStrip, {
+      dashboard: {
+        stockCount: 0,
+        checkedStockCount: 0,
+        totalBuyAmount: 0,
+        valuation: 0,
+        unrealizedProfit: 0,
+        owners: [],
+        quoteFetchedAt: null,
+        valuationSession: null,
+      },
+      refreshing: false,
+      onRefresh: () => undefined,
+    });
+
+    // When: the portfolio summary is rendered.
+    const markup = renderToStaticMarkup(summary);
+
+    // Then: metadata uses its empty state while financial values remain concrete zeroes.
+    expect(markup).toContain("조회 시각 없음");
+    expect(markup).toMatch(/<dt>평가 기준<\/dt><dd[^>]*>-<\/dd>/u);
+    expect(markup.match(/0원/gu)).toHaveLength(3);
+    expect(markup).not.toContain("일부 가격을 불러오지 못해");
   });
 
   it("counts each stock once across owners and brokerages", () => {
@@ -36,13 +63,13 @@ describe("dashboard summary", () => {
     const summary = createElement(SummaryStrip, {
       dashboard: {
         stockCount: 1,
-        quotedStockCount: 1,
-        costBasis: "280000",
-        valuation: "320000",
-        unrealizedProfit: "40000",
+        checkedStockCount: 1,
+        totalBuyAmount: 280000,
+        valuation: 320000,
+        unrealizedProfit: 40000,
         owners: [],
         quoteFetchedAt: "2026-08-13T15:30:00+09:00",
-        valuationSessions: ["REGULAR_MARKET"],
+        valuationSession: "REGULAR_MARKET",
       },
       refreshing: false,
       onRefresh: () => undefined,

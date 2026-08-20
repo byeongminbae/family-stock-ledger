@@ -6,12 +6,12 @@ import kr.byeongmin.stockdaejang.domain.trade.entity.Trade
 import kr.byeongmin.stockdaejang.global.util.ifNullThrow
 
 internal data class LedgerKey(
-    val ownerId: Short,
-    val brokerageId: Long?,
+    val ownerId: Long,
+    val brokerageId: Long,
     val itemCode: String,
 ) {
     fun lockText(): String {
-        return "[$ownerId,${brokerageId?.let { "\"$it\"" } ?: "null"},\"$itemCode\"]"
+        return "[$ownerId,\"$brokerageId\",\"$itemCode\"]"
     }
 
     companion object {
@@ -26,7 +26,7 @@ internal data class LedgerKey(
         fun from(trade: Trade): LedgerKey {
             return LedgerKey(
                 ownerId = trade.owner.id,
-                brokerageId = trade.brokerage?.id,
+                brokerageId = trade.brokerage.id.ifNullThrow(),
                 itemCode = trade.security.itemCode,
             )
         }

@@ -15,7 +15,7 @@ internal data class ParsedTradeDto(
     val isEtf: Boolean,
     val itemCode: String,
     val market: String,
-    val ownerId: Short,
+    val ownerId: Long,
     val quantity: BigInteger,
     val securityName: String,
     val side: TradeSide,

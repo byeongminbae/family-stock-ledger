@@ -4,7 +4,10 @@ import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(description = "거래 삭제 결과")
 data class DeleteTradesResponseDto(
-    @field:Schema(description = "실제로 삭제된 거래 건수", example = "2")
+    @field:Schema(
+        description = "실제로 삭제된 거래 건수",
+        example = "2",
+    )
     val deletedCount: Int,
 ) {
     companion object {

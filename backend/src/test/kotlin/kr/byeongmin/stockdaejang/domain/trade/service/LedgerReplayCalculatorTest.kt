@@ -11,8 +11,8 @@ import kotlin.test.assertEquals
 
 class LedgerReplayCalculatorTest {
     @Test
-    fun `증권사 유무가 다른 원장은 서로 다른 원장 식별 텍스트를 사용한다`() {
-        assertEquals("[1,null,\"005930\"]", LedgerKey(1, null, "005930").lockText())
+    fun `증권사 ID가 다른 원장은 서로 다른 원장 식별 텍스트를 사용한다`() {
+        assertEquals("[1,\"41\",\"005930\"]", LedgerKey(1, 41, "005930").lockText())
         assertEquals("[1,\"42\",\"005930\"]", LedgerKey(1, 42, "005930").lockText())
     }
 

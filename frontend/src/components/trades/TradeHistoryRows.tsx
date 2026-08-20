@@ -117,7 +117,7 @@ export function TradeHistoryTable({
               </th>
               <td className="money">{row.itemCode}</td>
               <td>{row.ownerName}</td>
-              <td>{row.brokerageName ?? "-"}</td>
+              <td>{row.brokerageName}</td>
               <td className="money">{formatInteger(row.quantity)}주</td>
               <td className="money">{formatWon(row.unitPrice)}</td>
               <td className="money">{formatWon(row.amount)}</td>
@@ -189,7 +189,7 @@ export function TradeHistoryCards({
               </div>
               <div>
                 <dt>증권사</dt>
-                <dd>{row.brokerageName ?? "-"}</dd>
+                <dd>{row.brokerageName}</dd>
               </div>
               <div>
                 <dt>{label} 수량</dt>

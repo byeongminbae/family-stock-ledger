@@ -165,13 +165,12 @@ class TradeServiceIntegrationTest {
         assertEquals("2", tradeService.getPositionAverage(1, "264", "TST001").data.heldQuantity)
         assertEquals("1", tradeService.getPositionAverage(2, "238", "TST002").data.heldQuantity)
         assertEquals(
-            2,
+            2L,
             queryFactory.select(owner.id)
                 .from(trade)
                 .join(trade.owner, owner)
                 .where(trade.id.eq(movableSell.data.id.toLong()))
-                .fetchOne()
-                ?.toInt(),
+                .fetchOne(),
         )
         assertEquals(
             "TST002",
@@ -256,19 +255,19 @@ class TradeServiceIntegrationTest {
     }
 
     @Test
-    fun `DB에 추가한 소유주도 코드 변경 없이 거래할 수 있다`() {
-        testData.createOwner(4, "새 소유주")
+    fun `Short 최댓값을 넘겨 DB에 추가한 소유주도 거래할 수 있다`() {
+        testData.createOwner(40_000L, "새 소유주")
 
         tradeService.createTrade(
             trade(
                 quantity = "1",
                 unitPrice = "100",
                 executedAt = "2026-08-01T10:00",
-                ownerId = 4,
+                ownerId = 40_000L,
             ),
         )
 
-        assertEquals("1", tradeService.getPositionAverage(4, "264", "TST001").data.heldQuantity)
+        assertEquals("1", tradeService.getPositionAverage(40_000L, "264", "TST001").data.heldQuantity)
     }
 
     private fun realizedProfit(id: String): String {
@@ -289,7 +288,7 @@ class TradeServiceIntegrationTest {
         quantity: String,
         unitPrice: String,
         executedAt: String,
-        ownerId: Int = 1,
+        ownerId: Long = 1,
         brokerageCode: String = "264",
         itemCode: String = "TST001",
         securityName: String = "통합 테스트 종목",
@@ -314,7 +313,7 @@ class TradeServiceIntegrationTest {
         quantity: String,
         unitPrice: String,
         executedAt: String,
-        ownerId: Int = 1,
+        ownerId: Long = 1,
         brokerageCode: String = "264",
         itemCode: String = "TST001",
         securityName: String = "통합 테스트 종목",

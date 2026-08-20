@@ -11,7 +11,7 @@ import { type StockSelection, sideLabel, type TradeSide } from "./types";
 const ownerIdSchema = z
   .string()
   .regex(/^[1-9]\d*$/, "소유주를 선택해 주세요.")
-  .refine((value) => Number(value) <= 32_767, "소유주를 선택해 주세요.");
+  .refine((value) => Number.isSafeInteger(Number(value)), "소유주를 선택해 주세요.");
 
 const inputSchema = z.object({
   brokerageCode: z.string().min(1, "증권사를 선택해 주세요."),
@@ -35,7 +35,7 @@ const tradeResponseSchema = z.discriminatedUnion("success", [
 const previewRequestSchema = z.object({
   brokerageCode: z.string().regex(/^\d{3}$/),
   itemCode: z.string().regex(/^[0-9A-Z]{6}$/),
-  ownerId: z.number().int().min(1).max(32_767),
+  ownerId: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
   quantity: z.string().regex(/^[1-9]\d*$/),
   side: z.enum(["BUY", "SELL"]),
   unitPrice: z.string().regex(/^[1-9]\d*$/),

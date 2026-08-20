@@ -34,7 +34,7 @@ function TradeEditForm({ brokerages, onCancel, onSaved, owners, row, side }: Tra
     side,
     tradeId: row.id,
     initialValues: {
-      brokerageCode: row.brokerageCode ?? "",
+      brokerageCode: row.brokerageCode,
       executedAt: isoInstantToSeoulDateTimeLocal(row.executedAt),
       ownerId: row.ownerId.toString(),
       stock: {

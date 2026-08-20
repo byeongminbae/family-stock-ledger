@@ -30,7 +30,7 @@ class TradeReferenceResolver(
         return ResolvedTradeReferencesDto(owner, brokerage, security)
     }
 
-    fun requireOwner(ownerId: Short): Owner {
+    fun requireOwner(ownerId: Long): Owner {
         return ownerQueryRepository.findById(ownerId)
             ?: throw BusinessException(CommonError.RESOURCE_NOT_FOUND)
     }

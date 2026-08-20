@@ -26,7 +26,14 @@ class HistoryFilterParserTest {
     fun `소유주 ID는 고정 목록이 아니라 양수 DB 식별자로 해석한다`() {
         val parsedFilters = HistoryFilterParser.parse(null, null, null, "4", null, null)
 
-        assertEquals(4, parsedFilters.ownerId)
+        assertEquals(4L, parsedFilters.ownerId)
+    }
+
+    @Test
+    fun `Short 최댓값을 넘는 소유주 ID도 DB 식별자로 해석한다`() {
+        val parsedFilters = HistoryFilterParser.parse(null, null, null, "40000", null, null)
+
+        assertEquals(40_000L, parsedFilters.ownerId)
     }
 
     @Test
@@ -34,7 +41,7 @@ class HistoryFilterParserTest {
         val parsedFilters = HistoryFilterParser.parse("  삼성전자  ", null, null, "2", "264", "3")
 
         assertEquals("삼성전자", parsedFilters.q)
-        assertEquals(2, parsedFilters.ownerId)
+        assertEquals(2L, parsedFilters.ownerId)
         assertEquals("264", parsedFilters.brokerageCode)
         assertEquals(3, parsedFilters.page)
         assertTrue(parsedFilters.hasFilters)

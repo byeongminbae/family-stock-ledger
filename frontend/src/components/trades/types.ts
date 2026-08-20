@@ -19,8 +19,8 @@ export interface TradeHistoryRow {
   readonly amount: string;
   readonly ownerId: number;
   readonly ownerName: string;
-  readonly brokerageCode: string | null;
-  readonly brokerageName: string | null;
+  readonly brokerageCode: string;
+  readonly brokerageName: string;
   readonly profit: string | null;
 }
 

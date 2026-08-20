@@ -1,7 +1,7 @@
 import type { MarketSession } from "@/lib/api-contracts";
 
 import styles from "./dashboard.module.css";
-import { formatQuoteTime, formatSignedWon, formatWon } from "./format";
+import { formatDashboardWon, formatQuoteTime, formatSignedWon } from "./format";
 import type { DashboardResponse } from "./types";
 
 type SummaryStripProps = Readonly<{
@@ -16,18 +16,18 @@ const marketSessionLabels = {
   REGULAR_MARKET: "정규장",
   AFTER_MARKET: "에프터",
 } as const satisfies Readonly<Record<MarketSession, string>>;
-const valuationBasisLabels = ["프리", "정규장", "에프터"] as const;
-
 export function SummaryStrip({ dashboard, refreshing, onRefresh }: SummaryStripProps) {
-  const { costBasis, quoteFetchedAt, quotedStockCount, stockCount, unrealizedProfit, valuation } =
-    dashboard;
-  const activeValuationBasisLabels = new Set(
-    dashboard.valuationSessions.map((session) => marketSessionLabels[session]),
-  );
-  const valuationBasis =
-    activeValuationBasisLabels.size === 0
-      ? "-"
-      : valuationBasisLabels.filter((label) => activeValuationBasisLabels.has(label)).join(" · ");
+  const { checkedStockCount, stockCount, totalBuyAmount, unrealizedProfit, valuation } = dashboard;
+  const quoteMetadata =
+    dashboard.valuationSession === null
+      ? {
+          quoteTime: formatQuoteTime(dashboard.quoteFetchedAt),
+          valuationBasis: "-",
+        }
+      : {
+          quoteTime: formatQuoteTime(dashboard.quoteFetchedAt),
+          valuationBasis: marketSessionLabels[dashboard.valuationSession],
+        };
 
   return (
     <section className={styles.summary} aria-labelledby="portfolio-summary">
@@ -35,7 +35,7 @@ export function SummaryStrip({ dashboard, refreshing, onRefresh }: SummaryStripP
         <div>
           <h2 id="portfolio-summary">전체 보유 현황</h2>
           <p>
-            {formatQuoteTime(quoteFetchedAt)} · {quotedStockCount}/{stockCount}개 종목 가격 확인
+            {quoteMetadata.quoteTime} · {checkedStockCount}/{stockCount}개 종목 가격 확인
           </p>
         </div>
         <button
@@ -56,37 +56,27 @@ export function SummaryStrip({ dashboard, refreshing, onRefresh }: SummaryStripP
         </div>
         <div>
           <dt>평가 기준</dt>
-          <dd className={styles.sessionValue}>{valuationBasis}</dd>
+          <dd className={styles.sessionValue}>{quoteMetadata.valuationBasis}</dd>
         </div>
         <div>
           <dt>전체 매입액</dt>
-          <dd className="money">{formatWon(costBasis)}</dd>
+          <dd className="money">{formatDashboardWon(totalBuyAmount)}</dd>
         </div>
         <div>
           <dt>전체 평가액</dt>
-          <dd className="money">{formatWon(valuation)}</dd>
+          <dd className="money">{formatDashboardWon(valuation)}</dd>
         </div>
         <div>
           <dt>평가 손익</dt>
           <dd
             className={`${styles.profitValue} ${
-              unrealizedProfit === null || unrealizedProfit === "0"
-                ? ""
-                : !unrealizedProfit.startsWith("-")
-                  ? "positive"
-                  : "negative"
+              unrealizedProfit === 0 ? "" : unrealizedProfit > 0 ? "positive" : "negative"
             }`}
           >
             {formatSignedWon(unrealizedProfit)}
           </dd>
         </div>
       </dl>
-      {quotedStockCount < stockCount && stockCount > 0 ? (
-        <p className={styles.quoteNotice} role="status">
-          일부 가격을 불러오지 못해 전체 평가액과 평가 손익을 계산하지 않았습니다. DB 기반 보유
-          정보는 그대로 표시합니다.
-        </p>
-      ) : null}
     </section>
   );
 }

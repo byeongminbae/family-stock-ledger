@@ -265,8 +265,8 @@ test("real journal flow and complete responsive capture set", async ({ page }) =
   await expect(page.getByText("삼성전자", { exact: true }).first()).toBeVisible();
   await page.getByLabel("병민 정렬 기준").selectOption("stockName");
   await page.getByRole("button", { name: /병민 정렬 방향/ }).click();
-  await expect(page.getByLabel("할머니 정렬 기준")).toHaveValue("costBasis");
-  await expect(page.getByLabel("아빠 정렬 기준")).toHaveValue("costBasis");
+  await expect(page.getByLabel("할머니 정렬 기준")).toHaveValue("totalBuyAmount");
+  await expect(page.getByLabel("아빠 정렬 기준")).toHaveValue("totalBuyAmount");
   const byeongminTotal = page.locator('section[data-owner="병민"] tfoot tr');
   await expect(byeongminTotal).toContainText("합계 (1종목)");
   await expect(byeongminTotal).toContainText("700,000원");

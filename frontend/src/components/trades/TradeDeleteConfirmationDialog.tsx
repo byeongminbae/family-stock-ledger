@@ -87,7 +87,7 @@ export function TradeDeleteConfirmationDialog({
                 </div>
                 <div>
                   <dt>증권사</dt>
-                  <dd>{row.brokerageName ?? "미지정 증권사"}</dd>
+                  <dd>{row.brokerageName}</dd>
                 </div>
               </dl>
             </li>

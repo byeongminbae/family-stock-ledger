@@ -2,53 +2,74 @@ import { z } from "zod";
 
 import { MARKET_SESSIONS } from "@/lib/api-contracts";
 
-const financeTextSchema = z.string().regex(/^-?(0|[1-9]\d*)(\.\d+)?$/);
-const ownerIdSchema = z.number().int().positive().max(32_767);
+const financeNumberSchema = z.number();
+const ownerIdSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const marketSessionSchema = z.enum(MARKET_SESSIONS);
 
 const dashboardStockSchema = z.strictObject({
-  itemCode: z.string().regex(/^[0-9A-Z]{6}$/),
+  stockCode: z.string().regex(/^[0-9A-Z]{6}$/),
   stockName: z.string().min(1),
-  heldQuantity: financeTextSchema,
-  averageBuyPrice: financeTextSchema,
-  costBasis: financeTextSchema,
-  brokerageWeight: financeTextSchema.nullable(),
-  currentPrice: financeTextSchema.nullable(),
-  valuation: financeTextSchema.nullable(),
-  unrealizedProfit: financeTextSchema.nullable(),
-  returnRate: financeTextSchema.nullable(),
+  quantity: z.number().int(),
+  averageBuyPrice: financeNumberSchema,
+  totalBuyAmount: financeNumberSchema,
+  brokerageWeight: financeNumberSchema,
+  currentPrice: financeNumberSchema,
+  valuation: financeNumberSchema,
+  unrealizedProfit: financeNumberSchema,
+  returnRate: financeNumberSchema,
 });
 
 const dashboardBrokerageSchema = z.strictObject({
-  brokerageCode: z.string().nullable(),
-  brokerageName: z.string().nullable(),
+  brokerageCode: z.string().min(1),
+  brokerageName: z.string().min(1),
   stockCount: z.number().int().nonnegative(),
-  costBasis: financeTextSchema,
-  valuation: financeTextSchema.nullable(),
-  unrealizedProfit: financeTextSchema.nullable(),
+  totalBuyAmount: financeNumberSchema,
+  valuation: financeNumberSchema,
+  unrealizedProfit: financeNumberSchema,
   stocks: z.array(dashboardStockSchema),
 });
 
 const dashboardOwnerSchema = z.strictObject({
-  id: ownerIdSchema,
-  name: z.string().min(1),
+  ownerId: ownerIdSchema,
+  ownerName: z.string().min(1),
   stockCount: z.number().int().nonnegative(),
-  costBasis: financeTextSchema,
-  valuation: financeTextSchema.nullable(),
-  unrealizedProfit: financeTextSchema.nullable(),
+  totalBuyAmount: financeNumberSchema,
+  valuation: financeNumberSchema,
+  unrealizedProfit: financeNumberSchema,
   brokerages: z.array(dashboardBrokerageSchema),
 });
 
-export const dashboardResponseSchema = z.strictObject({
-  stockCount: z.number().int().nonnegative(),
-  quotedStockCount: z.number().int().nonnegative(),
-  costBasis: financeTextSchema,
-  valuation: financeTextSchema.nullable(),
-  unrealizedProfit: financeTextSchema.nullable(),
+const dashboardResponseShape = {
+  totalBuyAmount: financeNumberSchema,
+  valuation: financeNumberSchema,
+  unrealizedProfit: financeNumberSchema,
   owners: z.array(dashboardOwnerSchema),
-  quoteFetchedAt: z.string().nullable(),
-  valuationSessions: z.array(marketSessionSchema),
+};
+
+const emptyDashboardResponseSchema = z.strictObject({
+  ...dashboardResponseShape,
+  stockCount: z.literal(0),
+  checkedStockCount: z.literal(0),
+  quoteFetchedAt: z.null(),
+  valuationSession: z.null(),
 });
+
+const populatedDashboardResponseSchema = z
+  .strictObject({
+    ...dashboardResponseShape,
+    stockCount: z.number().int().positive(),
+    checkedStockCount: z.number().int().positive(),
+    quoteFetchedAt: z.string(),
+    valuationSession: marketSessionSchema,
+  })
+  .refine(({ checkedStockCount, stockCount }) => checkedStockCount === stockCount, {
+    path: ["checkedStockCount"],
+  });
+
+export const dashboardResponseSchema = z.union([
+  emptyDashboardResponseSchema,
+  populatedDashboardResponseSchema,
+]);
 
 export type DashboardStock = Readonly<z.infer<typeof dashboardStockSchema>>;
 export type DashboardBrokerage = Readonly<
@@ -61,17 +82,21 @@ export type DashboardOwner = Readonly<
     readonly brokerages: readonly DashboardBrokerage[];
   }
 >;
-export type DashboardResponse = Readonly<
-  Omit<z.infer<typeof dashboardResponseSchema>, "owners"> & {
-    readonly owners: readonly DashboardOwner[];
-  }
->;
+type WithReadonlyOwners<Response> = Response extends { owners: unknown }
+  ? Readonly<
+      Omit<Response, "owners"> & {
+        readonly owners: readonly DashboardOwner[];
+      }
+    >
+  : never;
+
+export type DashboardResponse = WithReadonlyOwners<z.infer<typeof dashboardResponseSchema>>;
 
 export type SortField =
   | "stockName"
-  | "heldQuantity"
+  | "quantity"
   | "averageBuyPrice"
-  | "costBasis"
+  | "totalBuyAmount"
   | "brokerageWeight"
   | "currentPrice"
   | "unrealizedProfit"

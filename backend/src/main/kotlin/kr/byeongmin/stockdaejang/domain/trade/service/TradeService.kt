@@ -100,7 +100,7 @@ class TradeService(
 
     @Transactional(readOnly = true)
     fun getPositionAverage(
-        ownerId: Int?,
+        ownerId: Long?,
         brokerageCode: String?,
         itemCode: String?,
     ): SuccessDataResponse<PositionAverageResponseDto> {

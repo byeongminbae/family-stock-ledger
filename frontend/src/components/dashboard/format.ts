@@ -4,18 +4,28 @@ import { formatKoreanDateTime, formatPercent, formatQuantity, formatWon } from "
 
 export { formatPercent, formatQuantity, formatWon };
 
-export function formatSignedWon(value: string | null): string {
-  if (value === null) return "-";
+export function formatSignedWon(value: number): string {
   const decimal = new Decimal(value);
   const prefix = decimal.isPositive() ? "+" : "";
-  return `${prefix}${formatWon(value)}`;
+  return `${prefix}${formatWon(String(value))}`;
 }
 
-export function formatSignedPercent(value: string | null): string {
-  if (value === null) return "-";
+export function formatSignedPercent(value: number): string {
   const decimal = new Decimal(value);
   const prefix = decimal.isPositive() ? "+" : "";
-  return `${prefix}${formatPercent(value)}`;
+  return `${prefix}${formatPercent(String(value))}`;
+}
+
+export function formatDashboardWon(value: number): string {
+  return formatWon(String(value));
+}
+
+export function formatDashboardQuantity(value: number): string {
+  return formatQuantity(String(value));
+}
+
+export function formatDashboardPercent(value: number): string {
+  return formatPercent(String(value));
 }
 
 export function formatQuoteTime(value: string | null): string {
@@ -27,8 +37,7 @@ export function formatQuoteTime(value: string | null): string {
   }
 }
 
-export function profitLabel(value: string | null): string {
-  if (value === null) return "가격 조회 실패";
+export function profitLabel(value: number): string {
   const decimal = new Decimal(value);
   if (decimal.isZero()) return "보합";
   return decimal.isPositive() ? "이익" : "손실";

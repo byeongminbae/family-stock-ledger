@@ -14,9 +14,7 @@ import org.springframework.context.annotation.Import
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.postgresql.PostgreSQLContainer
-import java.time.OffsetDateTime
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 @SpringBootTest
 @Testcontainers
@@ -37,15 +35,10 @@ class HistoryQueryRepositoryIntegrationTest {
     }
 
     @Test
-    fun `증권사 필터는 해당 원장만 보이고 기존 무증권사 거래의 증권사는 null이며 매수 종목은 중복 제거한다`() {
+    fun `증권사 필터는 해당 원장만 보이고 매수 종목은 중복 제거한다`() {
         tradeService.createTrade(trade(itemCode = "HST001", brokerageCode = "264", executedAt = "2026-08-01T10:00"))
         tradeService.createTrade(trade(itemCode = "HST001", brokerageCode = "238", executedAt = "2026-08-01T11:00"))
         tradeService.createTrade(trade(itemCode = "HST002", brokerageCode = "264", executedAt = "2026-08-01T12:00"))
-        val legacyTradeId = testData.createTradeWithoutBrokerage(
-            itemCode = "HST003",
-            stockName = "기존 종목",
-            executedAt = OffsetDateTime.parse("2026-08-01T13:00:00+09:00"),
-        )
 
         val brokerageRows = findPage(brokerageCode = "238")
         val allRows = findPage()
@@ -53,11 +46,11 @@ class HistoryQueryRepositoryIntegrationTest {
 
         assertEquals(1L, count(brokerageCode = "238"))
         assertEquals(listOf("HST001"), brokerageRows.map { it.security.itemCode })
-        assertEquals("238", brokerageRows.single().brokerage?.code)
-        assertEquals("미래에셋증권", brokerageRows.single().brokerage?.name)
-        assertNull(allRows.single { it.id == legacyTradeId }.brokerage)
-        assertEquals(setOf("HST001", "HST002", "HST003"), purchased.map { it.itemCode }.toSet())
-        assertEquals(3, purchased.size)
+        assertEquals("238", brokerageRows.single().brokerage.code)
+        assertEquals("미래에셋증권", brokerageRows.single().brokerage.name)
+        assertEquals(3, allRows.size)
+        assertEquals(setOf("HST001", "HST002"), purchased.map { it.itemCode }.toSet())
+        assertEquals(2, purchased.size)
     }
 
     private fun findPage(brokerageCode: String? = null): List<Trade> {

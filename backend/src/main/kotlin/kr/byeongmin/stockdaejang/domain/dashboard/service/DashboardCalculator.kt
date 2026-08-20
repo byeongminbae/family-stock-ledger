@@ -3,7 +3,6 @@ package kr.byeongmin.stockdaejang.domain.dashboard.service
 import kr.byeongmin.stockdaejang.domain.dashboard.dto.DashboardResponseDto
 import kr.byeongmin.stockdaejang.domain.owner.entity.Owner
 import kr.byeongmin.stockdaejang.domain.stock.dto.MarketPriceDto
-import kr.byeongmin.stockdaejang.domain.stock.provider.MarketSession
 import org.springframework.stereotype.Component
 import java.math.MathContext
 import java.math.RoundingMode
@@ -25,15 +24,19 @@ class DashboardCalculator(
             marketPricesByItemCode,
             mathContext,
         )
-        val applicableMarketPrices = stocksByHolding.mapNotNull { (holding, stock) ->
-            marketPricesByItemCode[holding.security.itemCode]?.takeIf { stock.currentPrice != null }
+        val applicableMarketPrices = stocksByHolding.keys.map { holding ->
+            marketPricesByItemCode.getValue(holding.security.itemCode)
         }
-        val sessions = applicableMarketPrices.map(MarketPriceDto::session).toSet()
+        val latestAppliedQuote = applicableMarketPrices.maxWithOrNull(
+            compareBy<MarketPriceDto>(MarketPriceDto::localTradedAt)
+                .thenBy(MarketPriceDto::itemCode)
+                .thenBy { it.session.ordinal },
+        )
         return dashboardTotalsCalculator.calculate(
             owners = owners,
             stocksByHolding = stocksByHolding,
-            quoteFetchedAt = applicableMarketPrices.maxOfOrNull(MarketPriceDto::localTradedAt)?.toString(),
-            valuationSessions = MarketSession.entries.filter(sessions::contains),
+            quoteFetchedAt = latestAppliedQuote?.localTradedAt?.toString(),
+            valuationSession = latestAppliedQuote?.session,
             mathContext = mathContext,
         )
     }

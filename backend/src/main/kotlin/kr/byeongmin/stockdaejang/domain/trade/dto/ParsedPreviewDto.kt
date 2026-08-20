@@ -6,7 +6,7 @@ import java.math.BigInteger
 internal data class ParsedPreviewDto(
     val brokerageCode: String,
     val itemCode: String,
-    val ownerId: Short,
+    val ownerId: Long,
     val quantity: BigInteger,
     val side: TradeSide,
     val unitPrice: BigInteger,

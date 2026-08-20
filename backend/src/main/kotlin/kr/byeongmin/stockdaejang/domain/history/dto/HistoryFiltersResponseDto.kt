@@ -24,13 +24,12 @@ data class HistoryFiltersResponseDto(
     )
     val to: String?,
     @field:Schema(
-        description = "소유주 ID. 1 이상 32767 이하의 필터가 적용되지 않으면 null입니다.",
+        description = "소유주 ID. 양의 정수 필터가 적용되지 않으면 null입니다.",
         example = "1",
         minimum = "1",
-        maximum = "32767",
         nullable = true,
     )
-    val ownerId: Short?,
+    val ownerId: Long?,
     @field:Schema(
         description = "증권사 코드. 3자리 코드 필터가 적용되지 않으면 null입니다.",
         example = "240",
@@ -38,7 +37,11 @@ data class HistoryFiltersResponseDto(
         nullable = true,
     )
     val brokerageCode: String?,
-    @field:Schema(description = "현재 페이지. 유효하지 않은 값은 1로 처리한 뒤 범위에 맞게 보정합니다", example = "1", minimum = "1")
+    @field:Schema(
+        description = "현재 페이지. 유효하지 않은 값은 1로 처리한 뒤 범위에 맞게 보정합니다",
+        example = "1",
+        minimum = "1",
+    )
     val page: Int,
 ) {
     @get:JsonIgnore

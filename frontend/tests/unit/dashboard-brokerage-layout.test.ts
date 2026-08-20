@@ -12,16 +12,16 @@ import type {
 } from "../../src/components/dashboard/types";
 
 const samsungStock: DashboardStock = {
-  itemCode: "005930",
+  stockCode: "005930",
   stockName: "삼성전자",
-  heldQuantity: "2",
-  averageBuyPrice: "70000",
-  costBasis: "140000",
-  brokerageWeight: "20",
-  currentPrice: "80000",
-  valuation: "160000",
-  unrealizedProfit: "20000",
-  returnRate: "14.2857",
+  quantity: 2,
+  averageBuyPrice: 70000,
+  totalBuyAmount: 140000,
+  brokerageWeight: 20,
+  currentPrice: 80000,
+  valuation: 160000,
+  unrealizedProfit: 20000,
+  returnRate: 14.2857,
 };
 
 const brokerages: readonly DashboardBrokerage[] = [
@@ -29,15 +29,15 @@ const brokerages: readonly DashboardBrokerage[] = [
     brokerageCode: "240",
     brokerageName: "삼성증권",
     stockCount: 2,
-    costBasis: "280000",
-    valuation: "320000",
-    unrealizedProfit: "40000",
+    totalBuyAmount: 280000,
+    valuation: 320000,
+    unrealizedProfit: 40000,
     stocks: [
       samsungStock,
       {
         ...samsungStock,
-        itemCode: "000660",
-        brokerageWeight: "60",
+        stockCode: "000660",
+        brokerageWeight: 60,
         stockName: "SK하이닉스",
       },
     ],
@@ -45,12 +45,12 @@ const brokerages: readonly DashboardBrokerage[] = [
 ];
 
 const owner: DashboardOwner = {
-  id: 1,
-  name: "병민",
+  ownerId: 1,
+  ownerName: "병민",
   stockCount: 2,
-  costBasis: "280000",
-  valuation: "320000",
-  unrealizedProfit: "40000",
+  totalBuyAmount: 280000,
+  valuation: 320000,
+  unrealizedProfit: 40000,
   brokerages,
 };
 
@@ -62,18 +62,18 @@ describe("dashboard brokerage layout", () => {
         brokerageCode: "240",
         brokerageName: "삼성증권",
         stockCount: 1,
-        costBasis: "140000",
-        valuation: "160000",
-        unrealizedProfit: "20000",
+        totalBuyAmount: 140000,
+        valuation: 160000,
+        unrealizedProfit: 20000,
         stocks: [samsungStock],
       },
       {
         brokerageCode: "264",
         brokerageName: "키움증권",
         stockCount: 1,
-        costBasis: "140000",
-        valuation: "160000",
-        unrealizedProfit: "20000",
+        totalBuyAmount: 140000,
+        valuation: 160000,
+        unrealizedProfit: 20000,
         stocks: [samsungStock],
       },
     ];

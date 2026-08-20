@@ -17,11 +17,11 @@ class DashboardRepository(private val queryFactory: JPAQueryFactory) {
             .selectFrom(trade)
             .join(trade.owner, owner).fetchJoin()
             .join(trade.security, security).fetchJoin()
-            .leftJoin(trade.brokerage, brokerage).fetchJoin()
+            .join(trade.brokerage, brokerage).fetchJoin()
             .orderBy(
                 owner.id.asc(),
-                brokerage.name.asc().nullsLast(),
-                brokerage.code.asc().nullsLast(),
+                brokerage.name.asc(),
+                brokerage.code.asc(),
                 security.stockName.asc(),
                 security.itemCode.asc(),
                 trade.executedAt.asc(),

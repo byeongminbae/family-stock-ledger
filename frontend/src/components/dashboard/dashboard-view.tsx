@@ -53,7 +53,7 @@ export function DashboardView({ dashboard }: DashboardViewProps) {
 
       <div className={styles.ownerStack} aria-busy={refreshing}>
         {dashboard.owners.map((owner) => (
-          <OwnerSection key={owner.id} owner={owner} />
+          <OwnerSection key={owner.ownerId} owner={owner} />
         ))}
       </div>
     </div>

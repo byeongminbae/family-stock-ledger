@@ -4,9 +4,15 @@ import io.swagger.v3.oas.annotations.media.Schema
 
 @Schema(description = "거래 입력값으로 계산한 매수액·매도액, 보유 수량, 매수평균단가와 예상 손익")
 data class TradePreviewResponseDto(
-    @field:Schema(description = "수량 × 당시 단가로 계산한 매수액 또는 매도액의 정수 문자열", example = "750000")
+    @field:Schema(
+        description = "수량 × 당시 단가로 계산한 매수액 또는 매도액의 정수 문자열",
+        example = "750000",
+    )
     val amount: String,
-    @field:Schema(description = "현재 보유 수량을 나타내는 정수 문자열", example = "10")
+    @field:Schema(
+        description = "현재 보유 수량을 나타내는 정수 문자열",
+        example = "10",
+    )
     val heldQuantity: String,
     @field:Schema(
         description = "매수평균단가. 보유 수량이 0이면 null입니다.",

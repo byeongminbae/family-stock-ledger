@@ -8,7 +8,7 @@ import type { Brokerage, Owner } from "@/lib/api-contracts";
 import { getInternalApiData } from "./internal-api";
 
 const financeTextSchema = z.string().regex(/^-?(0|[1-9]\d*)(\.\d+)?$/);
-const ownerIdSchema = z.number().int().positive().max(32_767);
+const ownerIdSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const ownerSchema = z.strictObject({
   id: ownerIdSchema,
   name: z.string().trim().min(1),
@@ -27,8 +27,8 @@ const historyFiltersSchema = z.strictObject({
 });
 const historyRowSchema = z.strictObject({
   amount: financeTextSchema,
-  brokerageCode: z.string().nullable(),
-  brokerageName: z.string().nullable(),
+  brokerageCode: z.string().regex(/^\d{3}$/),
+  brokerageName: z.string().min(1),
   executedAt: z.string().min(1),
   id: z.string().regex(/^[1-9]\d*$/),
   isEtf: z.boolean(),

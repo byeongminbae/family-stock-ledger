@@ -38,10 +38,10 @@ class Trade(
     @field:Schema(description = "종목")
     var security: Security,
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "brokerage_id")
-    @field:Schema(description = "증권사. 지정되지 않은 레거시 거래이면 null입니다.", nullable = true)
-    var brokerage: Brokerage? = null,
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "brokerage_id", nullable = false)
+    @field:Schema(description = "거래 증권사")
+    var brokerage: Brokerage,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "side", nullable = false)

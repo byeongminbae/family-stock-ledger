@@ -13,7 +13,7 @@ class Owner(
     @Id
     @Column(name = "id", nullable = false)
     @field:Schema(description = "소유주 내부 대리키", example = "1", minimum = "1")
-    val id: Short,
+    val id: Long,
 
     @Column(name = "name", nullable = false, unique = true)
     @field:Schema(description = "소유주명", example = "병민")

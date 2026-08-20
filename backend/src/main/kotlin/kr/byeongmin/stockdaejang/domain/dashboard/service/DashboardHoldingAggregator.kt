@@ -10,11 +10,11 @@ import java.math.BigDecimal
 
 internal data class DashboardHolding(
     val owner: Owner,
-    val brokerage: Brokerage?,
+    val brokerage: Brokerage,
     val security: Security,
     val boughtQuantity: BigDecimal,
     val soldQuantity: BigDecimal,
-    val totalBuyAmount: BigDecimal,
+    val grossBuyAmount: BigDecimal,
 )
 
 @Component
@@ -22,25 +22,27 @@ class DashboardHoldingAggregator {
     internal fun aggregate(trades: List<Trade>): List<DashboardHolding> {
         val holdingsByIdentity = linkedMapOf<HoldingIdentity, DashboardHolding>()
         trades.forEach { trade ->
+            val brokerage = trade.brokerage
+            val brokerageId = checkNotNull(brokerage.id) { "Dashboard brokerage must be persisted" }
             val identity = HoldingIdentity(
                 ownerId = trade.owner.id,
-                brokerageId = trade.brokerage?.id,
-                brokerageCode = trade.brokerage?.code?.trimEnd(),
-                itemCode = trade.security.itemCode,
+                brokerageId = brokerageId,
+                brokerageCode = brokerage.code.trimEnd(),
+                stockCode = trade.security.itemCode,
             )
             val current = holdingsByIdentity[identity] ?: DashboardHolding(
                 owner = trade.owner,
-                brokerage = trade.brokerage,
+                brokerage = brokerage,
                 security = trade.security,
                 boughtQuantity = BigDecimal.ZERO,
                 soldQuantity = BigDecimal.ZERO,
-                totalBuyAmount = BigDecimal.ZERO,
+                grossBuyAmount = BigDecimal.ZERO,
             )
             val quantity = BigDecimal.valueOf(trade.quantity)
             holdingsByIdentity[identity] = when (trade.side) {
                 TradeSide.BUY -> current.copy(
                     boughtQuantity = current.boughtQuantity + quantity,
-                    totalBuyAmount = current.totalBuyAmount + quantity * BigDecimal.valueOf(trade.unitPrice),
+                    grossBuyAmount = current.grossBuyAmount + quantity * BigDecimal.valueOf(trade.unitPrice),
                 )
 
                 TradeSide.SELL -> current.copy(soldQuantity = current.soldQuantity + quantity)
@@ -50,9 +52,9 @@ class DashboardHoldingAggregator {
     }
 
     private data class HoldingIdentity(
-        val ownerId: Short,
-        val brokerageId: Long?,
-        val brokerageCode: String?,
-        val itemCode: String,
+        val ownerId: Long,
+        val brokerageId: Long,
+        val brokerageCode: String,
+        val stockCode: String,
     )
 }

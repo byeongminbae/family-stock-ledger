@@ -25,9 +25,7 @@ class DashboardService(
             dashboardCalculator.calculate(
                 owners,
                 dashboardHoldings,
-                marketPricesByItemCode.mapNotNull { (itemCode, marketPrice) ->
-                    marketPrice?.let { itemCode to it }
-                }.toMap(),
+                marketPricesByItemCode,
             ),
         )
     }

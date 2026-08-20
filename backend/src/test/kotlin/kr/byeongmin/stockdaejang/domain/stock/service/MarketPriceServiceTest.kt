@@ -12,7 +12,6 @@ import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class MarketPriceServiceTest {
     @Test
@@ -42,12 +41,9 @@ class MarketPriceServiceTest {
     }
 
     @Test
-    fun `keeps distinct request order batches by provider capacity and leaves missing or failed batches null`() {
+    fun `returns every normalized requested code in request order when every batch succeeds`() {
         val provider = FakeMarketPriceProvider(maxBatchSize = 2) { itemCodes ->
-            if (itemCodes == listOf("035420")) {
-                throw BusinessException(CommonError.EXTERNAL_API_ERROR)
-            }
-            listOf(snapshot("005930", MarketSession.REGULAR_MARKET))
+            itemCodes.asReversed().map { itemCode -> snapshot(itemCode, MarketSession.REGULAR_MARKET) }
         }
         val service = MarketPriceService(provider)
 
@@ -55,13 +51,30 @@ class MarketPriceServiceTest {
 
         assertEquals(listOf(listOf("005930", "000660"), listOf("035420")), provider.requestedBatches)
         assertEquals(listOf("005930", "000660", "035420"), prices.keys.toList())
-        assertEquals(100, prices.getValue("005930")?.price)
-        assertNull(prices.getValue("000660"))
-        assertNull(prices.getValue("035420"))
+        assertEquals(100, prices.getValue("005930").price)
+        assertEquals(100, prices.getValue("000660").price)
+        assertEquals(100, prices.getValue("035420").price)
     }
 
     @Test
-    fun `propagates non-external provider errors and rejects response codes outside the requested batch`() {
+    fun `fails the whole batch when the provider reports an external API error`() {
+        val provider = FakeMarketPriceProvider(maxBatchSize = 2) { itemCodes ->
+            if (itemCodes == listOf("035420")) {
+                throw BusinessException(CommonError.EXTERNAL_API_ERROR)
+            }
+            itemCodes.map { itemCode -> snapshot(itemCode, MarketSession.REGULAR_MARKET) }
+        }
+
+        val exception = assertThrows<BusinessException> {
+            MarketPriceService(provider).getMarketPrices(listOf("005930", "000660", "035420"))
+        }
+
+        assertEquals(CommonError.EXTERNAL_API_ERROR, exception.errorType)
+        assertEquals(listOf(listOf("005930", "000660"), listOf("035420")), provider.requestedBatches)
+    }
+
+    @Test
+    fun `propagates non-external provider errors and rejects invalid provider response codes`() {
         val invalidInputProvider = FakeMarketPriceProvider {
             throw BusinessException(CommonError.INVALID_INPUT_VALUE)
         }
@@ -80,6 +93,42 @@ class MarketPriceServiceTest {
     }
 
     @Test
+    fun `rejects a provider response that omits a requested code`() {
+        val provider = FakeMarketPriceProvider {
+            listOf(snapshot("005930", MarketSession.REGULAR_MARKET))
+        }
+
+        val exception = assertThrows<BusinessException> {
+            MarketPriceService(provider).getMarketPrices(listOf("005930", "000660"))
+        }
+
+        assertEquals(CommonError.EXTERNAL_API_ERROR, exception.errorType)
+    }
+
+    @Test
+    fun `rejects a non-positive selected market price`() {
+        val provider = FakeMarketPriceProvider {
+            listOf(snapshot("005930", MarketSession.REGULAR_MARKET).copy(regularPrice = 0))
+        }
+
+        val exception = assertThrows<BusinessException> {
+            MarketPriceService(provider).getMarketPrices(listOf("005930"))
+        }
+
+        assertEquals(CommonError.EXTERNAL_API_ERROR, exception.errorType)
+    }
+
+    @Test
+    fun `returns an empty map without calling the provider for an empty request`() {
+        val provider = FakeMarketPriceProvider(maxBatchSize = 0)
+
+        val prices = MarketPriceService(provider).getMarketPrices(emptyList())
+
+        assertEquals(emptyMap(), prices)
+        assertEquals(emptyList(), provider.requestedBatches)
+    }
+
+    @Test
     fun `selects regular and over-market candidates by translated session`() {
         val provider = FakeMarketPriceProvider { itemCodes ->
             itemCodes.map { itemCode ->
@@ -95,13 +144,13 @@ class MarketPriceServiceTest {
 
         val prices = service.getMarketPrices(listOf("005930", "000660", "035420", "051910"))
 
-        assertEquals(100, prices.getValue("005930")?.price)
-        assertEquals(MarketSession.PREOPEN, prices.getValue("005930")?.session)
-        assertEquals(100, prices.getValue("000660")?.price)
-        assertEquals(110, prices.getValue("035420")?.price)
-        assertEquals("2026-08-11T20:00+09:00", prices.getValue("035420")?.localTradedAt.toString())
-        assertEquals(110, prices.getValue("051910")?.price)
-        assertEquals(MarketSession.AFTER_MARKET, prices.getValue("051910")?.session)
+        assertEquals(100, prices.getValue("005930").price)
+        assertEquals(MarketSession.PREOPEN, prices.getValue("005930").session)
+        assertEquals(100, prices.getValue("000660").price)
+        assertEquals(110, prices.getValue("035420").price)
+        assertEquals("2026-08-11T20:00+09:00", prices.getValue("035420").localTradedAt.toString())
+        assertEquals(110, prices.getValue("051910").price)
+        assertEquals(MarketSession.AFTER_MARKET, prices.getValue("051910").session)
     }
 
     @Test
@@ -113,9 +162,9 @@ class MarketPriceServiceTest {
 
         val price = service.getMarketPrices(listOf("005930")).getValue("005930")
 
-        assertEquals(100, price?.price)
-        assertEquals("2026-08-11T15:30+09:00", price?.localTradedAt.toString())
-        assertEquals(MarketSession.REGULAR_MARKET, price?.session)
+        assertEquals(100, price.price)
+        assertEquals("2026-08-11T15:30+09:00", price.localTradedAt.toString())
+        assertEquals(MarketSession.REGULAR_MARKET, price.session)
     }
 
     @Test

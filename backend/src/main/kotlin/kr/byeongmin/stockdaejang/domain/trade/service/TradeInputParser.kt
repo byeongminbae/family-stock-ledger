@@ -30,6 +30,7 @@ internal object TradeInputParser {
         .withResolverStyle(ResolverStyle.STRICT)
     private val seoul = ZoneId.of("Asia/Seoul")
     private val maxBigint = BigInteger.valueOf(Long.MAX_VALUE)
+    private val maxQuantity = BigInteger.valueOf(Int.MAX_VALUE.toLong())
 
     fun trade(request: TradeRequestDto): ParsedTradeDto {
         return parseTrade(
@@ -65,7 +66,7 @@ internal object TradeInputParser {
     }
 
     fun delete(request: DeleteTradesRequestDto): ParsedDeleteTradesDto {
-        val rawIds = request.ids ?: invalid()
+        val rawIds = request.ids
         if (rawIds.isEmpty() || rawIds.size > 25 || rawIds.toSet().size != rawIds.size) invalid()
         return ParsedDeleteTradesDto(rawIds.map(::parsePositiveLong), parseSide(request.side))
     }
@@ -75,13 +76,13 @@ internal object TradeInputParser {
             brokerageCode = parseBrokerageCode(request.brokerageCode),
             itemCode = parseItemCode(request.itemCode),
             ownerId = parseOwnerId(request.ownerId),
-            quantity = parsePositiveBigint(request.quantity),
+            quantity = parsePositiveQuantity(request.quantity),
             side = parseSide(request.side),
             unitPrice = parsePositiveBigint(request.unitPrice),
         )
     }
 
-    fun position(ownerId: Int?, brokerageCode: String?, itemCode: String?): ParsedPositionDto {
+    fun position(ownerId: Long?, brokerageCode: String?, itemCode: String?): ParsedPositionDto {
         return ParsedPositionDto(
             ownerId = parseOwnerId(ownerId),
             brokerageCode = parseBrokerageCode(brokerageCode),
@@ -90,26 +91,26 @@ internal object TradeInputParser {
     }
 
     private fun parseTrade(
-        brokerageCode: String?,
-        executedAt: String?,
-        isEtf: Boolean?,
-        itemCode: String?,
-        market: String?,
-        ownerId: Int?,
-        quantity: String?,
-        securityName: String?,
-        side: String?,
-        unitPrice: String?,
+        brokerageCode: String,
+        executedAt: String,
+        isEtf: Boolean,
+        itemCode: String,
+        market: String,
+        ownerId: Long,
+        quantity: String,
+        securityName: String,
+        side: String,
+        unitPrice: String,
     ): ParsedTradeDto {
         return ParsedTradeDto(
             brokerageCode = parseBrokerageCode(brokerageCode),
             executedAt = parseExecutedAt(executedAt),
-            isEtf = isEtf ?: invalid(),
+            isEtf = isEtf,
             itemCode = parseItemCode(itemCode),
-            market = market?.trim()?.takeIf { it.isNotEmpty() && it.length <= 30 } ?: invalid(),
+            market = market.trim().takeIf { it.isNotEmpty() && it.length <= 30 } ?: invalid(),
             ownerId = parseOwnerId(ownerId),
-            quantity = parsePositiveBigint(quantity),
-            securityName = securityName?.trim()?.takeIf { it.isNotEmpty() && it.length <= 100 } ?: invalid(),
+            quantity = parsePositiveQuantity(quantity),
+            securityName = securityName.trim().takeIf { it.isNotEmpty() && it.length <= 100 } ?: invalid(),
             side = parseSide(side),
             unitPrice = parsePositiveBigint(unitPrice),
         )
@@ -123,11 +124,8 @@ internal object TradeInputParser {
         return rawItemCode?.takeIf(itemCode::matches) ?: invalid()
     }
 
-    private fun parseOwnerId(rawOwnerId: Int?): Short {
-        return rawOwnerId
-            ?.takeIf { it in 1..Short.MAX_VALUE.toInt() }
-            ?.toShort()
-            ?: invalid()
+    private fun parseOwnerId(rawOwnerId: Long?): Long {
+        return rawOwnerId?.takeIf { it > 0 } ?: invalid()
     }
 
     private fun parseSide(rawSide: String?): TradeSide {
@@ -143,6 +141,10 @@ internal object TradeInputParser {
         val parsedPositiveInteger = rawPositiveInteger.toBigInteger()
         if (parsedPositiveInteger > maxBigint) invalid()
         return parsedPositiveInteger
+    }
+
+    private fun parsePositiveQuantity(rawQuantity: String?): BigInteger {
+        return parsePositiveBigint(rawQuantity).takeIf { it <= maxQuantity } ?: invalid()
     }
 
     private fun parseExecutedAt(rawExecutedAt: String?): Instant {

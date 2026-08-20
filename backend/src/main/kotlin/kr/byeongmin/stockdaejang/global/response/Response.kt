@@ -8,14 +8,12 @@ interface Response {
     @get:Schema(
         description = "요청 처리 성공 여부. 성공 응답은 true, 오류 응답은 false입니다.",
         example = "true",
-        requiredMode = Schema.RequiredMode.REQUIRED,
     )
     val success: Boolean
 
     @get:Schema(
         description = "서버가 응답을 생성한 로컬 일시. 시간대 오프셋은 포함하지 않습니다.",
         example = "2026-08-20T14:35:12.123456",
-        requiredMode = Schema.RequiredMode.REQUIRED,
     )
     val timestamp: LocalDateTime
 }

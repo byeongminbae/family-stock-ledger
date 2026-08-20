@@ -10,7 +10,6 @@ class SuccessResponse(
     @field:Schema(
         description = "요청이 성공적으로 처리되었음을 나타내는 고정값",
         example = "true",
-        requiredMode = Schema.RequiredMode.REQUIRED,
     )
     override val success: Boolean = true
 }

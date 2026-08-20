@@ -29,7 +29,7 @@ class DashboardHoldingAggregatorTest {
         assertEquals(1, dashboardHoldings.size)
         assertEquals(BigDecimal("5"), dashboardHoldings.single().boughtQuantity)
         assertEquals(BigDecimal("1"), dashboardHoldings.single().soldQuantity)
-        assertEquals(BigDecimal("6000"), dashboardHoldings.single().totalBuyAmount)
+        assertEquals(BigDecimal("6000"), dashboardHoldings.single().grossBuyAmount)
     }
 
     @Test
@@ -47,7 +47,7 @@ class DashboardHoldingAggregatorTest {
         val dashboardHoldings = dashboardHoldingAggregator.aggregate(trades)
 
         // Then
-        assertEquals(listOf("238", "279"), dashboardHoldings.map { it.brokerage?.code?.trimEnd() })
+        assertEquals(listOf("238", "279"), dashboardHoldings.map { it.brokerage.code.trimEnd() })
         assertEquals(listOf(BigDecimal("3"), BigDecimal("2")), dashboardHoldings.map { it.boughtQuantity - it.soldQuantity })
     }
 

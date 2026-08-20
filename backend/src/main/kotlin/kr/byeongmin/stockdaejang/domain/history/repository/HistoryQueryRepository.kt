@@ -21,7 +21,7 @@ class HistoryQueryRepository(private val queryFactory: JPAQueryFactory) {
         searchQuery: String?,
         fromInclusive: OffsetDateTime?,
         toExclusive: OffsetDateTime?,
-        ownerId: Short?,
+        ownerId: Long?,
         brokerageCode: String?,
     ): Long {
         return queryFactory
@@ -29,7 +29,7 @@ class HistoryQueryRepository(private val queryFactory: JPAQueryFactory) {
             .from(trade)
             .join(trade.owner, owner)
             .join(trade.security, security)
-            .leftJoin(trade.brokerage, brokerage)
+            .join(trade.brokerage, brokerage)
             .where(predicate(side, searchQuery, fromInclusive, toExclusive, ownerId, brokerageCode))
             .fetchOne() ?: 0
     }
@@ -49,7 +49,7 @@ class HistoryQueryRepository(private val queryFactory: JPAQueryFactory) {
         searchQuery: String?,
         fromInclusive: OffsetDateTime?,
         toExclusive: OffsetDateTime?,
-        ownerId: Short?,
+        ownerId: Long?,
         brokerageCode: String?,
         offset: Long,
         limit: Long,
@@ -58,7 +58,7 @@ class HistoryQueryRepository(private val queryFactory: JPAQueryFactory) {
             .selectFrom(trade)
             .join(trade.owner, owner).fetchJoin()
             .join(trade.security, security).fetchJoin()
-            .leftJoin(trade.brokerage, brokerage).fetchJoin()
+            .join(trade.brokerage, brokerage).fetchJoin()
             .where(predicate(side, searchQuery, fromInclusive, toExclusive, ownerId, brokerageCode))
             .orderBy(trade.executedAt.desc(), trade.id.desc())
             .offset(offset)
@@ -83,7 +83,7 @@ class HistoryQueryRepository(private val queryFactory: JPAQueryFactory) {
         searchQuery: String?,
         fromInclusive: OffsetDateTime?,
         toExclusive: OffsetDateTime?,
-        ownerId: Short?,
+        ownerId: Long?,
         brokerageCode: String?,
     ): BooleanBuilder {
         return BooleanBuilder(trade.side.eq(side)).apply {

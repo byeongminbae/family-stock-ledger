@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.postgresql.PostgreSQLContainer
+import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -191,27 +192,27 @@ class StockDaejangApplicationTests {
         }
 
         assertEquals("240", schemas.path("BrokerageResponseDto").path("properties").path("code").path("example").asString())
-        assertEquals("264", schemas.path("DashboardBrokerageResponseDto").path("properties").path("brokerageCode").path("example").asString())
-        assertEquals("키움증권", schemas.path("DashboardBrokerageResponseDto").path("properties").path("brokerageName").path("example").asString())
-        val dashboardStockProperties = schemas.path("DashboardStockResponseDto").path("properties")
-        assertFalse(dashboardStockProperties.path("brokerageWeight").isMissingNode, "DashboardStockResponseDto.brokerageWeight가 OpenAPI 문서에 없습니다.")
-        listOf("ownerId", "ownerName", "brokerageCode", "brokerageName", "portfolioWeight").forEach { obsoletePropertyName ->
-            assertTrue(
-                dashboardStockProperties.path(obsoletePropertyName).isMissingNode,
-                "DashboardStockResponseDto.${obsoletePropertyName}는 포함되면 안 됩니다.",
-            )
-        }
-        listOf("DashboardResponseDto", "DashboardOwnerResponseDto", "DashboardBrokerageResponseDto").forEach { aggregateSchemaName ->
-            val aggregateProperties = schemas.path(aggregateSchemaName).path("properties")
-            assertTrue(aggregateProperties.path("currentPrice").isMissingNode, "$aggregateSchemaName.currentPrice는 합계에 포함되면 안 됩니다.")
-            assertTrue(aggregateProperties.path("portfolioWeight").isMissingNode, "$aggregateSchemaName.portfolioWeight는 합계에 포함되면 안 됩니다.")
-        }
+        val tradeHistoryRow = schemas.path("TradeHistoryRowResponseDto")
+        assertTrue(tradeHistoryRow.path("required").values().map { it.asString() }.toSet().containsAll(setOf("brokerageCode", "brokerageName")))
+        assertFalse(tradeHistoryRow.path("properties").path("brokerageCode").path("nullable").asBoolean())
+        assertFalse(tradeHistoryRow.path("properties").path("brokerageName").path("nullable").asBoolean())
+        assertDashboardOpenApiContract(schemas)
         assertFalse(schemas.toString().contains("KIWOOM"), "존재하지 않는 영문 증권사 코드 KIWOOM이 문서에 남아 있습니다.")
 
         val tradeRequest = schemas.path("TradeRequestDto")
         assertEquals("2026-08-20T09:30", tradeRequest.path("properties").path("executedAt").path("example").asString())
         assertEquals("005930", tradeRequest.path("properties").path("itemCode").path("example").asString())
         assertEquals("10", tradeRequest.path("properties").path("quantity").path("example").asString())
+        val intQuantityPattern = "^(?:[1-9][0-9]{0,8}|1[0-9]{9}|20[0-9]{8}|21[0-3][0-9]{7}|214[0-6][0-9]{6}|2147[0-3][0-9]{5}|21474[0-7][0-9]{4}|214748[0-2][0-9]{3}|2147483[0-5][0-9]{2}|21474836[0-3][0-9]|214748364[0-7])$"
+        listOf("UpdateTradeRequestDto", "TradePreviewRequestDto").forEach { requestSchemaName ->
+            val quantity = schemas.path(requestSchemaName).path("properties").path("quantity")
+            assertEquals("거래 수량. 1 이상 2147483647 이하의 정수 문자열", quantity.path("description").asString())
+            assertEquals(10, quantity.path("maxLength").asInt())
+            assertEquals(intQuantityPattern, quantity.path("pattern").asString())
+        }
+        assertEquals("거래 수량. 1 이상 2147483647 이하의 정수 문자열", tradeRequest.path("properties").path("quantity").path("description").asString())
+        assertEquals(10, tradeRequest.path("properties").path("quantity").path("maxLength").asInt())
+        assertEquals(intQuantityPattern, tradeRequest.path("properties").path("quantity").path("pattern").asString())
         val requiredTradeFields = tradeRequest.path("required").values().map { it.asString() }.toSet()
         assertEquals(
             setOf("brokerageCode", "executedAt", "isEtf", "itemCode", "market", "ownerId", "quantity", "securityName", "side", "unitPrice"),
@@ -231,9 +232,9 @@ class StockDaejangApplicationTests {
             tradeSideValues,
             "TradeSide 허용값은 BUY와 SELL이 한 번씩만 노출되어야 합니다.",
         )
-        val valuationSessions = schemas.path("DashboardResponseDto").path("properties").path("valuationSessions")
-        assertTrue(valuationSessions.path("enum").isMissingNode, "valuationSessions 배열 자체에 enum이 지정되어서는 안 됩니다.")
-        val valuationSessionValues = valuationSessions.path("items").path("enum").values().map { it.asString() }
+        val valuationSession = schemas.path("DashboardResponseDto").path("properties").path("valuationSession")
+        assertNullable(valuationSession, "string")
+        val valuationSessionValues = valuationSession.path("enum").values().map { it.asString() }
         assertEquals(
             listOf("PREOPEN", "PRE_MARKET", "REGULAR_MARKET", "AFTER_MARKET"),
             valuationSessionValues,
@@ -250,5 +251,84 @@ class StockDaejangApplicationTests {
             .response
             .contentAsByteArray,
     )
+
+    private fun assertDashboardOpenApiContract(schemas: JsonNode) {
+        assertDashboardSchema(
+            schemas.path("DashboardResponseDto"),
+            setOf("stockCount", "checkedStockCount", "totalBuyAmount", "valuation", "unrealizedProfit", "owners", "quoteFetchedAt", "valuationSession"),
+            setOf("stockCount", "checkedStockCount", "totalBuyAmount", "valuation", "unrealizedProfit", "owners", "quoteFetchedAt", "valuationSession"),
+        )
+        assertDashboardSchema(
+            schemas.path("DashboardOwnerResponseDto"),
+            setOf("ownerId", "ownerName", "stockCount", "totalBuyAmount", "valuation", "unrealizedProfit", "brokerages"),
+            setOf("ownerId", "ownerName", "stockCount", "totalBuyAmount", "valuation", "unrealizedProfit", "brokerages"),
+        )
+        assertDashboardSchema(
+            schemas.path("DashboardBrokerageResponseDto"),
+            setOf("brokerageCode", "brokerageName", "stockCount", "totalBuyAmount", "valuation", "unrealizedProfit", "stocks"),
+            setOf("brokerageCode", "brokerageName", "stockCount", "totalBuyAmount", "valuation", "unrealizedProfit", "stocks"),
+        )
+        assertDashboardSchema(
+            schemas.path("DashboardStockResponseDto"),
+            setOf("stockCode", "stockName", "quantity", "averageBuyPrice", "totalBuyAmount", "brokerageWeight", "currentPrice", "valuation", "unrealizedProfit", "returnRate"),
+            setOf("stockCode", "stockName", "quantity", "averageBuyPrice", "totalBuyAmount", "brokerageWeight", "currentPrice", "valuation", "unrealizedProfit", "returnRate"),
+        )
+
+        val root = schemas.path("DashboardResponseDto").path("properties")
+        assertInteger(root.path("stockCount"), "int32")
+        assertInteger(root.path("checkedStockCount"), "int32")
+        assertNumber(root.path("totalBuyAmount"))
+        assertNumber(root.path("valuation"))
+        assertNumber(root.path("unrealizedProfit"))
+        assertNullable(root.path("quoteFetchedAt"), "string")
+        assertNullable(root.path("valuationSession"), "string")
+
+        val owner = schemas.path("DashboardOwnerResponseDto").path("properties")
+        assertInteger(owner.path("ownerId"), "int64")
+        assertInteger(owner.path("stockCount"), "int32")
+        assertNumber(owner.path("totalBuyAmount"))
+        assertNumber(owner.path("valuation"))
+        assertNumber(owner.path("unrealizedProfit"))
+
+        val brokerage = schemas.path("DashboardBrokerageResponseDto").path("properties")
+        assertInteger(brokerage.path("stockCount"), "int32")
+        assertNumber(brokerage.path("totalBuyAmount"))
+        assertNumber(brokerage.path("valuation"))
+        assertNumber(brokerage.path("unrealizedProfit"))
+        assertFalse(brokerage.path("brokerageCode").path("nullable").asBoolean(), "DashboardBrokerageResponseDto.brokerageCode은 null일 수 없습니다.")
+        assertFalse(brokerage.path("brokerageName").path("nullable").asBoolean(), "DashboardBrokerageResponseDto.brokerageName은 null일 수 없습니다.")
+
+        val stock = schemas.path("DashboardStockResponseDto").path("properties")
+        assertInteger(stock.path("quantity"), "int32")
+        listOf("averageBuyPrice", "totalBuyAmount", "brokerageWeight", "currentPrice", "valuation", "unrealizedProfit", "returnRate").forEach {
+            assertNumber(stock.path(it))
+        }
+    }
+
+    private fun assertDashboardSchema(schema: JsonNode, propertyNames: Set<String>, requiredPropertyNames: Set<String>) {
+        val documentedProperties = schema.path("properties").properties().map { it.key }.toSet()
+        assertEquals(propertyNames, documentedProperties, "${schema.path("title").asString()} 필드 계약이 일치하지 않습니다.")
+        assertEquals(requiredPropertyNames, schema.path("required").values().map { it.asString() }.toSet(), "${schema.path("title").asString()} 필수 필드 계약이 일치하지 않습니다.")
+    }
+
+    private fun assertInteger(property: JsonNode, format: String) {
+        assertEquals("integer", property.path("type").asString())
+        assertEquals(format, property.path("format").asString())
+    }
+
+    private fun assertNumber(property: JsonNode) {
+        assertEquals("number", property.path("type").asString())
+        assertFalse(property.path("nullable").asBoolean(), "${property.path("name").asString()}은 null일 수 없습니다.")
+    }
+
+    private fun assertNullable(property: JsonNode, valueType: String) {
+        val documentedTypes = property.path("type")
+        if (documentedTypes.isArray) {
+            assertEquals(setOf(valueType, "null"), documentedTypes.values().map { it.asString() }.toSet())
+        } else {
+            assertEquals(valueType, documentedTypes.asString())
+            assertTrue(property.path("nullable").asBoolean(), "$valueType 필드는 null일 수 있어야 합니다.")
+        }
+    }
 
 }

@@ -9,7 +9,6 @@ class ErrorResponse(exception: BusinessException) : Response {
     @get:Schema(
         description = "요청 처리 실패를 나타내는 고정값",
         example = "false",
-        requiredMode = Schema.RequiredMode.REQUIRED,
     )
     override val success: Boolean = false
 
@@ -17,14 +16,12 @@ class ErrorResponse(exception: BusinessException) : Response {
         description = "오류 종류를 식별하는 애플리케이션 오류 코드",
         example = "REQ_001",
         allowableValues = ["REQ_000", "REQ_001", "RES_001", "RES_002", "EXT_000", "SER_000", "SER_001", "TRADE_002"],
-        requiredMode = Schema.RequiredMode.REQUIRED,
     )
     val statusCode: String = exception.errorType.statusCode
 
     @field:Schema(
         description = "사용자에게 표시할 수 있는 오류 설명",
         example = "입력값이 올바르지 않습니다.",
-        requiredMode = Schema.RequiredMode.REQUIRED,
     )
     val message: String = exception.errorType.message
 

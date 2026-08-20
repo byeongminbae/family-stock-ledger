@@ -15,47 +15,48 @@ class DashboardPositionCalculator {
         marketPricesByItemCode: Map<String, MarketPriceDto>,
         mathContext: MathContext,
     ): Map<DashboardHolding, DashboardStockResponseDto> {
-        val costBasisByHolding = holdings.associateWith { holding ->
-            val heldQuantity = holding.boughtQuantity.subtract(holding.soldQuantity, mathContext)
-            val averageBuyPrice = holding.totalBuyAmount.divide(holding.boughtQuantity, mathContext)
-            heldQuantity.multiply(averageBuyPrice, mathContext)
+        val totalBuyAmountByHolding = holdings.associateWith { holding ->
+            val remainingQuantity = holding.boughtQuantity.subtract(holding.soldQuantity, mathContext)
+            val averageBuyPrice = holding.grossBuyAmount.divide(holding.boughtQuantity, mathContext)
+            remainingQuantity.multiply(averageBuyPrice, mathContext)
         }
         val brokerageCostByIdentity = holdings
             .groupBy { holding -> holding.owner.id to holding.brokerageIdentity() }
             .mapValues { (_, brokerageHoldings) ->
-                brokerageHoldings.sumOfDecimal(mathContext) { costBasisByHolding.getValue(it) }
+                brokerageHoldings.sumOfDecimal(mathContext) { totalBuyAmountByHolding.getValue(it) }
             }
 
         return holdings.associateWith { holding ->
-            val heldQuantity = holding.boughtQuantity.subtract(holding.soldQuantity, mathContext)
-            val averageBuyPrice = holding.totalBuyAmount.divide(holding.boughtQuantity, mathContext)
-            val costBasis = costBasisByHolding.getValue(holding)
+            val remainingQuantity = holding.boughtQuantity.subtract(holding.soldQuantity, mathContext)
+            val averageBuyPrice = holding.grossBuyAmount.divide(holding.boughtQuantity, mathContext)
+            val totalBuyAmount = totalBuyAmountByHolding.getValue(holding)
             val brokerageCost = brokerageCostByIdentity.getValue(holding.owner.id to holding.brokerageIdentity())
-            val marketPrice = marketPricesByItemCode[holding.security.itemCode]?.takeIf { it.price > 0 }
-            val valuation = marketPrice?.let {
-                BigDecimal.valueOf(it.price).multiply(heldQuantity, mathContext)
+            val marketPrice = checkNotNull(marketPricesByItemCode[holding.security.itemCode]) {
+                "Dashboard market price is required for ${holding.security.itemCode}"
             }
-            val unrealizedProfit = valuation?.subtract(costBasis, mathContext)
+            val currentPrice = BigDecimal.valueOf(marketPrice.price)
+            val valuation = currentPrice.multiply(remainingQuantity, mathContext)
+            val unrealizedProfit = valuation.subtract(totalBuyAmount, mathContext)
             DashboardStockResponseDto(
-                itemCode = holding.security.itemCode,
+                stockCode = holding.security.itemCode,
                 stockName = holding.security.stockName,
-                heldQuantity = decimalText(heldQuantity),
-                averageBuyPrice = decimalText(averageBuyPrice),
-                costBasis = decimalText(costBasis),
-                brokerageWeight = percentage(costBasis, brokerageCost, mathContext),
-                currentPrice = marketPrice?.price?.toString(),
-                valuation = valuation?.let(::decimalText),
-                unrealizedProfit = unrealizedProfit?.let(::decimalText),
-                returnRate = unrealizedProfit?.let { percentage(it, costBasis, mathContext) },
+                quantity = remainingQuantity.intValueExact(),
+                averageBuyPrice = averageBuyPrice.normalized(),
+                totalBuyAmount = totalBuyAmount.normalized(),
+                brokerageWeight = percentage(totalBuyAmount, brokerageCost, mathContext),
+                currentPrice = currentPrice,
+                valuation = valuation.normalized(),
+                unrealizedProfit = unrealizedProfit.normalized(),
+                returnRate = percentage(unrealizedProfit, totalBuyAmount, mathContext),
             )
         }
     }
 
-    private fun percentage(amount: BigDecimal, totalAmount: BigDecimal, mathContext: MathContext): String? {
+    private fun percentage(amount: BigDecimal, totalAmount: BigDecimal, mathContext: MathContext): BigDecimal {
         return if (totalAmount.signum() == 0) {
-            null
+            BigDecimal.ZERO
         } else {
-            decimalText(amount.divide(totalAmount, mathContext).multiply(HUNDRED))
+            amount.divide(totalAmount, mathContext).multiply(HUNDRED).normalized()
         }
     }
 
@@ -64,11 +65,15 @@ class DashboardPositionCalculator {
     }
 }
 
-private fun DashboardHolding.brokerageIdentity(): Pair<Long?, String>? {
-    return brokerage?.let { it.id to it.code.trimEnd() }
+private fun DashboardHolding.brokerageIdentity(): Pair<Long, String> {
+    return checkNotNull(brokerage.id) { "Dashboard brokerage must be persisted" } to brokerage.code.trimEnd()
 }
 
-internal fun decimalText(value: BigDecimal): String {
-    val rounded = value.setScale(18, RoundingMode.HALF_UP).stripTrailingZeros()
-    return if (rounded.signum() == 0) "0" else rounded.toPlainString()
+private fun BigDecimal.normalized(): BigDecimal {
+    val normalized = setScale(18, RoundingMode.HALF_UP).stripTrailingZeros()
+    return when {
+        normalized.signum() == 0 -> BigDecimal.ZERO
+        normalized.scale() < 0 -> normalized.setScale(0)
+        else -> normalized
+    }
 }

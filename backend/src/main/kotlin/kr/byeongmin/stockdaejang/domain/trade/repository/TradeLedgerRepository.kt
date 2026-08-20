@@ -25,8 +25,8 @@ class TradeLedgerRepository(private val queryFactory: JPAQueryFactory) {
     }
 
     fun findEntriesBefore(
-        ownerId: Short,
-        brokerageId: Long?,
+        ownerId: Long,
+        brokerageId: Long,
         itemCode: String,
         beforeExclusive: Instant,
     ): List<Trade> {
@@ -34,8 +34,8 @@ class TradeLedgerRepository(private val queryFactory: JPAQueryFactory) {
     }
 
     fun findTradesFrom(
-        ownerId: Short,
-        brokerageId: Long?,
+        ownerId: Long,
+        brokerageId: Long,
         itemCode: String,
         fromInclusive: Instant,
     ): List<Trade> {
@@ -46,7 +46,7 @@ class TradeLedgerRepository(private val queryFactory: JPAQueryFactory) {
     }
 
     fun findCurrentEntries(
-        ownerId: Short,
+        ownerId: Long,
         brokerageCode: String,
         itemCode: String,
     ): List<Trade> {
@@ -64,8 +64,8 @@ class TradeLedgerRepository(private val queryFactory: JPAQueryFactory) {
     }
 
     private fun findEntries(
-        ownerId: Short,
-        brokerageId: Long?,
+        ownerId: Long,
+        brokerageId: Long,
         itemCode: String,
         beforeExclusive: Instant,
     ): List<Trade> {
@@ -75,14 +75,14 @@ class TradeLedgerRepository(private val queryFactory: JPAQueryFactory) {
             .fetch()
     }
 
-    private fun baseLedgerQuery(ownerId: Short, brokerageId: Long?, itemCode: String): JPAQuery<Trade> {
+    private fun baseLedgerQuery(ownerId: Long, brokerageId: Long, itemCode: String): JPAQuery<Trade> {
         return queryFactory
             .selectFrom(trade)
             .join(trade.security, security)
             .where(
                 trade.owner.id.eq(ownerId),
                 security.itemCode.eq(itemCode),
-                brokerageId?.let { trade.brokerage.id.eq(it) } ?: trade.brokerage.isNull,
+                trade.brokerage.id.eq(brokerageId),
             )
     }
 }

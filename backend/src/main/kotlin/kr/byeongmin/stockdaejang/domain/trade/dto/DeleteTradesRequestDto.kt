@@ -8,8 +8,6 @@ data class DeleteTradesRequestDto(
     @field:ArraySchema(
         arraySchema = Schema(
             description = "삭제할 거래 ID 목록. 중복 없이 1건 이상 25건 이하로 입력합니다.",
-            requiredMode = Schema.RequiredMode.REQUIRED,
-            nullable = false,
             example = "[\"1\", \"2\"]",
         ),
         minItems = 1,
@@ -23,13 +21,11 @@ data class DeleteTradesRequestDto(
             example = "1",
         ),
     )
-    val ids: List<String>?,
+    val ids: List<String>,
     @field:Schema(
         description = "삭제할 거래 구분",
-        requiredMode = Schema.RequiredMode.REQUIRED,
-        nullable = false,
         allowableValues = ["BUY", "SELL"],
         example = "BUY",
     )
-    val side: String?,
+    val side: String,
 )

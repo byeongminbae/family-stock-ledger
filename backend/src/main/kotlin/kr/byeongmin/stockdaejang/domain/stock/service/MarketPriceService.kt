@@ -15,34 +15,41 @@ class MarketPriceService(
     private val marketPriceProvider: MarketPriceProvider,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) {
-    fun getMarketPrices(itemCodes: Collection<String>): Map<String, MarketPriceDto?> {
+    fun getMarketPrices(itemCodes: Collection<String>): Map<String, MarketPriceDto> {
         if (itemCodes.size > MAX_PRICE_CODES || itemCodes.any { itemCode -> !ITEM_CODE.matches(itemCode) }) {
             throw BusinessException(CommonError.INVALID_INPUT_VALUE)
+        }
+
+        val normalizedItemCodes = itemCodes.distinct()
+        if (normalizedItemCodes.isEmpty()) {
+            return emptyMap()
         }
         if (marketPriceProvider.maxBatchSize <= 0) {
             throw BusinessException(CommonError.INTERNAL_SERVER_ERROR)
         }
 
-        val normalizedItemCodes = itemCodes.distinct()
-        val marketPricesByItemCode = normalizedItemCodes
-            .associateWithTo(linkedMapOf<String, MarketPriceDto?>()) { null }
+        val marketPricesByItemCode = linkedMapOf<String, MarketPriceDto>()
 
         normalizedItemCodes.chunked(marketPriceProvider.maxBatchSize).forEach { itemCodeBatch ->
-            val marketPriceSnapshots = try {
-                marketPriceProvider.fetchMarketPrices(itemCodeBatch)
-            } catch (businessException: BusinessException) {
-                if (businessException.errorType == CommonError.EXTERNAL_API_ERROR) return@forEach
-                throw businessException
-            }
+            val marketPriceSnapshots = marketPriceProvider.fetchMarketPrices(itemCodeBatch)
 
             if (marketPriceSnapshots.any { marketPriceSnapshot -> marketPriceSnapshot.itemCode !in itemCodeBatch }) {
                 throw BusinessException(CommonError.EXTERNAL_API_ERROR)
             }
             marketPriceSnapshots.forEach { marketPriceSnapshot ->
-                marketPricesByItemCode[marketPriceSnapshot.itemCode] = selectMarketPrice(marketPriceSnapshot)
+                val marketPrice = selectMarketPrice(marketPriceSnapshot)
+                if (marketPrice.price <= 0) {
+                    throw BusinessException(CommonError.EXTERNAL_API_ERROR)
+                }
+                marketPricesByItemCode[marketPriceSnapshot.itemCode] = marketPrice
+            }
+            if (itemCodeBatch.any { itemCode -> itemCode !in marketPricesByItemCode }) {
+                throw BusinessException(CommonError.EXTERNAL_API_ERROR)
             }
         }
-        return marketPricesByItemCode
+        return normalizedItemCodes.associateWithTo(linkedMapOf()) { itemCode ->
+            marketPricesByItemCode.getValue(itemCode)
+        }
     }
 
     private fun selectMarketPrice(marketPriceSnapshot: MarketPriceSnapshotDto): MarketPriceDto {

@@ -26,7 +26,7 @@ object HistoryFilterParser {
     ): HistoryFiltersResponseDto {
         val validFromBoundary = validBoundaryText(fromBoundary)
         val validToBoundary = validBoundaryText(toBoundary)
-        val validOwnerId = ownerId?.trim()?.toShortOrNull()?.takeIf { it > 0 }
+        val validOwnerId = ownerId?.trim()?.toLongOrNull()?.takeIf { it > 0 }
         val validBrokerageCode = brokerageCode?.trim()?.takeIf(brokerageCodePattern::matches)
         val validPage = page?.trim()?.toIntOrNull()?.takeIf { it > 0 } ?: 1
         return HistoryFiltersResponseDto(

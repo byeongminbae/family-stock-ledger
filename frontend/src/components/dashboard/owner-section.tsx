@@ -14,9 +14,9 @@ const sortOptions: readonly Readonly<{
   label: string;
 }>[] = [
   { value: "stockName", label: "종목명" },
-  { value: "heldQuantity", label: "보유 수량" },
+  { value: "quantity", label: "보유 수량" },
   { value: "averageBuyPrice", label: "매수평균단가" },
-  { value: "costBasis", label: "매입액" },
+  { value: "totalBuyAmount", label: "매입액" },
   { value: "brokerageWeight", label: "증권사 비중" },
   { value: "currentPrice", label: "현재가" },
   { value: "unrealizedProfit", label: "평가 손익" },
@@ -44,13 +44,13 @@ function sortedBrokerages(
 }
 
 export function OwnerSection({ owner }: OwnerSectionProps) {
-  const [sortField, setSortField] = useState<SortField>("costBasis");
+  const [sortField, setSortField] = useState<SortField>("totalBuyAmount");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const sorted = useMemo(
     () => sortedBrokerages(owner.brokerages, sortField, sortDirection),
     [owner.brokerages, sortDirection, sortField],
   );
-  const headingId = `owner-${owner.name}`;
+  const headingId = `owner-${owner.ownerId}`;
   const activeLabel = sortOptions.find((option) => option.value === sortField)?.label ?? "매입액";
 
   function changeSortField(value: string) {
@@ -68,17 +68,21 @@ export function OwnerSection({ owner }: OwnerSectionProps) {
   }
 
   return (
-    <section className={styles.ownerSection} data-owner={owner.name} aria-labelledby={headingId}>
+    <section
+      className={styles.ownerSection}
+      data-owner={owner.ownerName}
+      aria-labelledby={headingId}
+    >
       <div className={styles.ownerHeader}>
         <div>
           <p className={styles.ownerEyebrow}>소유주</p>
-          <h2 id={headingId}>{owner.name}</h2>
+          <h2 id={headingId}>{owner.ownerName}</h2>
           <p>
             {owner.brokerages.length}개 증권사, {owner.stockCount}개 종목 보유
           </p>
         </div>
         <div className={styles.sortControls}>
-          <label htmlFor={`${headingId}-sort`}>{owner.name} 정렬 기준</label>
+          <label htmlFor={`${headingId}-sort`}>{owner.ownerName} 정렬 기준</label>
           <select
             id={`${headingId}-sort`}
             className="control"
@@ -95,7 +99,7 @@ export function OwnerSection({ owner }: OwnerSectionProps) {
             type="button"
             className="button button--secondary"
             onClick={() => setSortDirection((current) => (current === "asc" ? "desc" : "asc"))}
-            aria-label={`${owner.name} 정렬 방향, 현재 ${
+            aria-label={`${owner.ownerName} 정렬 방향, 현재 ${
               sortDirection === "asc" ? "오름차순" : "내림차순"
             }`}
           >
@@ -105,8 +109,8 @@ export function OwnerSection({ owner }: OwnerSectionProps) {
       </div>
 
       <p className="sr-only" aria-live="polite">
-        {owner.name} 목록을 {activeLabel} {sortDirection === "asc" ? "오름차순" : "내림차순"}으로
-        정렬했습니다.
+        {owner.ownerName} 목록을 {activeLabel} {sortDirection === "asc" ? "오름차순" : "내림차순"}
+        으로 정렬했습니다.
       </p>
 
       {owner.stockCount === 0 ? (

@@ -1,7 +1,9 @@
 package kr.byeongmin.stockdaejang.domain.trade.service
 
 import kr.byeongmin.stockdaejang.domain.trade.dto.DeleteTradesRequestDto
+import kr.byeongmin.stockdaejang.domain.trade.dto.TradePreviewRequestDto
 import kr.byeongmin.stockdaejang.domain.trade.dto.TradeRequestDto
+import kr.byeongmin.stockdaejang.domain.trade.dto.UpdateTradeRequestDto
 import kr.byeongmin.stockdaejang.global.error.CommonError
 import kr.byeongmin.stockdaejang.global.exception.BusinessException
 import org.junit.jupiter.api.Test
@@ -24,15 +26,30 @@ class TradeInputParserTest {
     }
 
     @Test
-    fun `PostgreSQL bigint 최댓값까지만 수량과 단가로 허용한다`() {
-        TradeInputParser.trade(validRequest(quantity = Long.MAX_VALUE.toString()))
+    fun `수량은 등록 수정 미리보기에서 Int 최댓값까지만 허용한다`() {
+        TradeInputParser.trade(validRequest(quantity = Int.MAX_VALUE.toString()))
+        TradeInputParser.update(validUpdateRequest(quantity = Int.MAX_VALUE.toString()))
+        TradeInputParser.preview(validPreviewRequest(quantity = Int.MAX_VALUE.toString()))
 
         assertThrows<BusinessException> {
-            TradeInputParser.trade(validRequest(quantity = "9223372036854775808"))
+            TradeInputParser.trade(validRequest(quantity = (Int.MAX_VALUE.toLong() + 1).toString()))
+        }
+        assertThrows<BusinessException> {
+            TradeInputParser.update(validUpdateRequest(quantity = (Int.MAX_VALUE.toLong() + 1).toString()))
+        }
+        assertThrows<BusinessException> {
+            TradeInputParser.preview(validPreviewRequest(quantity = (Int.MAX_VALUE.toLong() + 1).toString()))
         }
         assertThrows<BusinessException> {
             TradeInputParser.trade(validRequest(unitPrice = "0"))
         }
+    }
+
+    @Test
+    fun `Short 최댓값을 넘는 소유주 ID를 거래 입력으로 해석한다`() {
+        val parsedTrade = TradeInputParser.trade(validRequest(ownerId = 40_000L))
+
+        assertEquals(40_000L, parsedTrade.ownerId)
     }
 
     @Test
@@ -51,6 +68,7 @@ class TradeInputParserTest {
     private fun validRequest(
         brokerageCode: String = "264",
         executedAt: String = "2026-08-14T12:30",
+        ownerId: Long = 1,
         quantity: String = "3",
         unitPrice: String = "70000",
     ): TradeRequestDto {
@@ -60,11 +78,38 @@ class TradeInputParserTest {
             isEtf = false,
             itemCode = "005930",
             market = "KOSPI",
-            ownerId = 1,
+            ownerId = ownerId,
             quantity = quantity,
             securityName = "삼성전자",
             side = "BUY",
             unitPrice = unitPrice,
+        )
+    }
+
+    private fun validUpdateRequest(quantity: String): UpdateTradeRequestDto {
+        return UpdateTradeRequestDto(
+            id = "1",
+            brokerageCode = "264",
+            executedAt = "2026-08-14T12:30",
+            isEtf = false,
+            itemCode = "005930",
+            market = "KOSPI",
+            ownerId = 1,
+            quantity = quantity,
+            securityName = "삼성전자",
+            side = "BUY",
+            unitPrice = "70000",
+        )
+    }
+
+    private fun validPreviewRequest(quantity: String): TradePreviewRequestDto {
+        return TradePreviewRequestDto(
+            brokerageCode = "264",
+            itemCode = "005930",
+            ownerId = 1,
+            quantity = quantity,
+            side = "BUY",
+            unitPrice = "70000",
         )
     }
 }

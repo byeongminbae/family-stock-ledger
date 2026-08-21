@@ -2,8 +2,7 @@ package kr.byeongmin.stockdaejang.domain.trade.service
 
 import kr.byeongmin.stockdaejang.domain.trade.entity.Trade
 import kr.byeongmin.stockdaejang.domain.trade.entity.TradeSide
-import kr.byeongmin.stockdaejang.global.error.CommonError
-import kr.byeongmin.stockdaejang.global.exception.BusinessException
+import kr.byeongmin.stockdaejang.global.util.ifNullThrow
 import org.springframework.stereotype.Component
 import java.math.BigInteger
 
@@ -22,8 +21,7 @@ class LedgerStateCalculator {
 
                 TradeSide.SELL -> {
                     heldQuantity -= entry.quantity
-                    val realizedProfit = entry.realizedProfit
-                        ?: throw BusinessException(CommonError.NULL_CASTING_ERROR)
+                    val realizedProfit = entry.realizedProfit.ifNullThrow()
                     remainingCost -= amount - realizedProfit
                 }
             }

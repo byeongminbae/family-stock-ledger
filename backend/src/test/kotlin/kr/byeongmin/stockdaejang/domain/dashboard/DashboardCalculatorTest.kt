@@ -9,6 +9,8 @@ import kr.byeongmin.stockdaejang.domain.owner.entity.Owner
 import kr.byeongmin.stockdaejang.domain.stock.dto.MarketPriceDto
 import kr.byeongmin.stockdaejang.domain.stock.entity.Security
 import kr.byeongmin.stockdaejang.domain.stock.provider.MarketSession
+import kr.byeongmin.stockdaejang.global.error.CommonError
+import kr.byeongmin.stockdaejang.global.exception.BusinessException
 import org.junit.jupiter.api.Test
 import java.math.BigDecimal
 import java.time.OffsetDateTime
@@ -88,9 +90,10 @@ class DashboardCalculatorTest {
             "005930" to marketPrice("005930", "삼성전자", 1_500, MarketSession.PRE_MARKET),
         )
 
-        assertFailsWith<IllegalStateException> {
+        val exception = assertFailsWith<BusinessException> {
             dashboardCalculator.calculate(owners, dashboardHoldings, marketQuotesByItemCode)
         }
+        assertEquals(CommonError.NULL_CASTING_ERROR, exception.errorType)
     }
 
     @Test

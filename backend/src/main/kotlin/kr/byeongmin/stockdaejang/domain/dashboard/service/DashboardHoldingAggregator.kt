@@ -5,6 +5,7 @@ import kr.byeongmin.stockdaejang.domain.owner.entity.Owner
 import kr.byeongmin.stockdaejang.domain.stock.entity.Security
 import kr.byeongmin.stockdaejang.domain.trade.entity.Trade
 import kr.byeongmin.stockdaejang.domain.trade.entity.TradeSide
+import kr.byeongmin.stockdaejang.global.util.ifNullThrow
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 
@@ -23,7 +24,7 @@ class DashboardHoldingAggregator {
         val holdingsByIdentity = linkedMapOf<HoldingIdentity, DashboardHolding>()
         trades.forEach { trade ->
             val brokerage = trade.brokerage
-            val brokerageId = checkNotNull(brokerage.id) { "Dashboard brokerage must be persisted" }
+            val brokerageId = brokerage.id.ifNullThrow()
             val identity = HoldingIdentity(
                 ownerId = trade.owner.id,
                 brokerageId = brokerageId,

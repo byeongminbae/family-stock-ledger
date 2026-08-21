@@ -2,6 +2,7 @@ package kr.byeongmin.stockdaejang.domain.dashboard.service
 
 import kr.byeongmin.stockdaejang.domain.dashboard.dto.DashboardStockResponseDto
 import kr.byeongmin.stockdaejang.domain.stock.dto.MarketPriceDto
+import kr.byeongmin.stockdaejang.global.util.ifNullThrow
 import kr.byeongmin.stockdaejang.global.util.sumOfDecimal
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
@@ -31,9 +32,7 @@ class DashboardPositionCalculator {
             val averageBuyPrice = holding.grossBuyAmount.divide(holding.boughtQuantity, mathContext)
             val totalBuyAmount = totalBuyAmountByHolding.getValue(holding)
             val brokerageCost = brokerageCostByIdentity.getValue(holding.owner.id to holding.brokerageIdentity())
-            val marketPrice = checkNotNull(marketPricesByItemCode[holding.security.itemCode]) {
-                "Dashboard market price is required for ${holding.security.itemCode}"
-            }
+            val marketPrice = marketPricesByItemCode[holding.security.itemCode].ifNullThrow()
             val currentPrice = BigDecimal.valueOf(marketPrice.price)
             val valuation = currentPrice.multiply(remainingQuantity, mathContext)
             val unrealizedProfit = valuation.subtract(totalBuyAmount, mathContext)
@@ -66,7 +65,7 @@ class DashboardPositionCalculator {
 }
 
 private fun DashboardHolding.brokerageIdentity(): Pair<Long, String> {
-    return checkNotNull(brokerage.id) { "Dashboard brokerage must be persisted" } to brokerage.code.trimEnd()
+    return brokerage.id.ifNullThrow() to brokerage.code.trimEnd()
 }
 
 private fun BigDecimal.normalized(): BigDecimal {
